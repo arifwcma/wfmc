@@ -6,13 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../models/wms_models.dart';
+import '../services/boundary_service.dart';
 import '../services/settings_store.dart';
 import '../services/wms_capabilities_service.dart';
 import '../services/wms_feature_info_service.dart';
 import '../services/wms_tile_provider.dart';
 import '../utils/epsg_utils.dart';
-import '../widgets/legend_card.dart';
-import '../widgets/status_chip.dart';
 import '../widgets/study_list.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,16 +28,20 @@ class _HomeScreenState extends State<HomeScreen> {
   late final SettingsStore _settings;
   late final WmsCapabilitiesService _capsService;
   late final WmsFeatureInfoService _featureInfoService;
+  late final BoundaryService _boundaryService;
   final MapController _mapController = MapController();
 
   WmsCapabilities? _caps;
   List<WmsLayer> _studies = [];
+  Map<String, String> _layerToStudy = {};
   Object? _capsError;
   bool _loadingCaps = true;
   bool _identifying = false;
+  bool _mapReady = false;
 
-  final Set<String> _enabledLayerNames = <String>{};
-  bool _showLegend = false;
+  final Set<String> _enabledStudies = <String>{};
+  final Set<String> _enabledLayers = <String>{};
+  BasemapType _basemap = BasemapType.cartographic;
 
   @override
   void initState() {
@@ -50,6 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
       prefs: widget.prefs,
     );
     _featureInfoService = WmsFeatureInfoService(httpClient: _httpClient);
+    _boundaryService = BoundaryService();
+    _loadBoundary();
     _loadCapabilities();
   }
 
@@ -61,7 +66,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Uri get _baseEndpointUri => Uri.parse(_settings.baseEndpoint);
   String get _mapPath => _settings.mapPath;
-  List<String> get _activeLayers => _enabledLayerNames.toList()..sort();
+
+  List<String> get _activeLayers {
+    final effective = <String>[];
+    for (final layerName in _enabledLayers) {
+      final studyName = _layerToStudy[layerName];
+      if (studyName != null && _enabledStudies.contains(studyName)) {
+        effective.add(layerName);
+      }
+    }
+    effective.sort();
+    return effective;
+  }
+
+  Future<void> _loadBoundary() async {
+    await _boundaryService.load();
+    if (mounted) setState(() {});
+  }
+
+  void _zoomToBoundary() {
+    final bounds = _boundaryService.bounds;
+    if (bounds != null && _mapReady) {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(20),
+        ),
+      );
+    }
+  }
 
   Future<void> _loadCapabilities({bool forceRefresh = false}) async {
     setState(() {
@@ -78,12 +111,25 @@ class _HomeScreenState extends State<HomeScreen> {
         forceRefresh: forceRefresh,
       );
       final studies = _extractStudies(caps.rootLayer);
-      
+      final layerToStudy = <String, String>{};
+      for (final study in studies) {
+        if (study.name == null) continue;
+        for (final layer in study.children) {
+          if (layer.name != null) {
+            layerToStudy[layer.name!] = study.name!;
+          }
+        }
+      }
+
       setState(() {
         _caps = caps;
         _studies = studies;
-        if (_enabledLayerNames.isEmpty) {
-          _enabledLayerNames.addAll(AppConfig.defaultSelectedLayers);
+        _layerToStudy = layerToStudy;
+        if (_enabledStudies.isEmpty) {
+          _enabledStudies.addAll(AppConfig.defaultEnabledStudies);
+        }
+        if (_enabledLayers.isEmpty) {
+          _enabledLayers.addAll(AppConfig.defaultEnabledLayers);
         }
       });
     } catch (e) {
@@ -95,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<WmsLayer> _extractStudies(WmsLayer root) {
     WmsLayer? depthGroup;
-    
+
     void findDepth(WmsLayer layer) {
       if (layer.name == AppConfig.depthGroupName) {
         depthGroup = layer;
@@ -106,17 +152,27 @@ class _HomeScreenState extends State<HomeScreen> {
         if (depthGroup != null) return;
       }
     }
-    
+
     findDepth(root);
     return depthGroup?.children ?? [];
+  }
+
+  void _toggleStudy(String studyName, bool enabled) {
+    setState(() {
+      if (enabled) {
+        _enabledStudies.add(studyName);
+      } else {
+        _enabledStudies.remove(studyName);
+      }
+    });
   }
 
   void _toggleLayer(String layerName, bool enabled) {
     setState(() {
       if (enabled) {
-        _enabledLayerNames.add(layerName);
+        _enabledLayers.add(layerName);
       } else {
-        _enabledLayerNames.remove(layerName);
+        _enabledLayers.remove(layerName);
       }
     });
   }
@@ -124,10 +180,51 @@ class _HomeScreenState extends State<HomeScreen> {
   void _zoomTo(WmsLayer layer) {
     final bbox = layer.bbox3857;
     if (bbox == null) return;
-    final (cx, cy) = bbox.center;
-    final center = EpsgUtils.epsg3857ToLatLng(cx, cy);
-    final zoom = EpsgUtils.zoomFromSpanMeters(bbox.span);
-    _mapController.move(center, zoom);
+    final sw = EpsgUtils.epsg3857ToLatLng(bbox.minx, bbox.miny);
+    final ne = EpsgUtils.epsg3857ToLatLng(bbox.maxx, bbox.maxy);
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds(sw, ne),
+        padding: const EdgeInsets.all(20),
+      ),
+    );
+  }
+
+  void _showBasemapSelector() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Select Basemap',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+              for (final type in BasemapType.values)
+                ListTile(
+                  leading: Icon(
+                    type == _basemap ? Icons.check_circle : Icons.circle_outlined,
+                    color: type == _basemap
+                        ? Theme.of(ctx).colorScheme.primary
+                        : null,
+                  ),
+                  title: Text(type.label),
+                  onTap: () {
+                    setState(() => _basemap = type);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openSettings() async {
@@ -282,14 +379,36 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String? get _legendUrl {
+    final layers = _activeLayers;
+    if (layers.isEmpty) return null;
+    return WmsCapabilitiesService.buildLegendUri(
+      baseEndpoint: _baseEndpointUri,
+      mapPath: _mapPath,
+      layerName: layers.first,
+    ).toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeLayers = _activeLayers;
+    final boundaryPolygons = _boundaryService.polygons;
+    final legendUrl = _legendUrl;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_caps?.serviceTitle ?? 'Wimmera Flood Maps'),
         actions: [
+          IconButton(
+            tooltip: 'Zoom to region',
+            onPressed: _zoomToBoundary,
+            icon: const Icon(Icons.home),
+          ),
+          IconButton(
+            tooltip: 'Select basemap',
+            onPressed: _showBasemapSelector,
+            icon: const Icon(Icons.layers),
+          ),
           IconButton(
             tooltip: 'Refresh layers',
             onPressed: _loadingCaps
@@ -322,7 +441,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      '${activeLayers.length} selected',
+                      '${activeLayers.length} active',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -339,13 +458,18 @@ class _HomeScreenState extends State<HomeScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: const LatLng(-36.7, 142.6),
-              initialZoom: 8,
+              initialCenter: const LatLng(-36.7, 142.2),
+              initialZoom: 7,
               onTap: _identify,
+              onMapReady: () {
+                _mapReady = true;
+                _zoomToBoundary();
+              },
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: _basemap.urlTemplate,
+                subdomains: _basemap.subdomains ?? const [],
                 userAgentPackageName: 'au.gov.vic.wcma.wfmc',
               ),
               if (activeLayers.isNotEmpty)
@@ -361,34 +485,56 @@ class _HomeScreenState extends State<HomeScreen> {
                   urlTemplate: 'wms://tile',
                   tileDimension: 256,
                 ),
+              if (boundaryPolygons.isNotEmpty)
+                PolygonLayer(
+                  polygons: boundaryPolygons
+                      .map((points) => Polygon(
+                            points: points,
+                            color: Colors.transparent,
+                            borderColor: Colors.black,
+                            borderStrokeWidth: 2,
+                          ))
+                      .toList(),
+                ),
             ],
           ),
-          if (activeLayers.isNotEmpty && _showLegend)
+          if (legendUrl != null)
             Positioned(
+              top: 12,
               right: 12,
-              bottom: 12,
-              child: LegendCard(
-                title: 'Legend',
-                layers: activeLayers,
-                legendUrlFor: (layerName) =>
-                    WmsCapabilitiesService.buildLegendUri(
-                      baseEndpoint: _baseEndpointUri,
-                      mapPath: _mapPath,
-                      layerName: layerName,
-                    ).toString(),
-                onClose: () => setState(() => _showLegend = false),
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Image.network(
+                    legendUrl,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const SizedBox(
+                        width: 60,
+                        height: 60,
+                        child: Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const SizedBox(
+                        width: 60,
+                        height: 40,
+                        child: Center(
+                          child: Icon(Icons.broken_image, size: 20),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
-          Positioned(
-            left: 12,
-            bottom: 12,
-            child: StatusChip(
-              text: activeLayers.isEmpty
-                  ? 'No layers selected'
-                  : '${activeLayers.length} layer${activeLayers.length == 1 ? '' : 's'} active',
-              icon: activeLayers.isEmpty ? Icons.layers_clear : Icons.layers,
-            ),
-          ),
           if (_identifying)
             Positioned.fill(
               child: ColoredBox(
@@ -415,11 +561,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => setState(() => _showLegend = !_showLegend),
-        label: Text(_showLegend ? 'Hide legend' : 'Show legend'),
-        icon: const Icon(Icons.map),
       ),
     );
   }
@@ -451,7 +592,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return StudyList(
       studies: _studies,
-      enabledLayerNames: _enabledLayerNames,
+      enabledStudies: _enabledStudies,
+      enabledLayers: _enabledLayers,
+      onStudyToggled: _toggleStudy,
       onLayerToggled: _toggleLayer,
       onZoomTo: _zoomTo,
     );

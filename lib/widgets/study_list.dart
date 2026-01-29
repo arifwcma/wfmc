@@ -6,13 +6,17 @@ class StudyList extends StatefulWidget {
   const StudyList({
     super.key,
     required this.studies,
-    required this.enabledLayerNames,
+    required this.enabledStudies,
+    required this.enabledLayers,
+    required this.onStudyToggled,
     required this.onLayerToggled,
     required this.onZoomTo,
   });
 
   final List<WmsLayer> studies;
-  final Set<String> enabledLayerNames;
+  final Set<String> enabledStudies;
+  final Set<String> enabledLayers;
+  final void Function(String studyName, bool enabled) onStudyToggled;
   final void Function(String layerName, bool enabled) onLayerToggled;
   final void Function(WmsLayer layer) onZoomTo;
 
@@ -33,51 +37,26 @@ class _StudyListState extends State<StudyList> {
     }
   }
 
-  bool _isStudyPartiallySelected(WmsLayer study) {
-    final childNames = study.children
-        .where((c) => c.isRequestable)
-        .map((c) => c.name!)
-        .toSet();
-    final selected = childNames.intersection(widget.enabledLayerNames);
-    return selected.isNotEmpty && selected.length < childNames.length;
-  }
-
-  bool _isStudyFullySelected(WmsLayer study) {
-    final childNames = study.children
-        .where((c) => c.isRequestable)
-        .map((c) => c.name!)
-        .toSet();
-    if (childNames.isEmpty) return false;
-    return childNames.difference(widget.enabledLayerNames).isEmpty;
-  }
-
-  void _toggleStudy(WmsLayer study, bool select) {
-    for (final child in study.children) {
-      if (child.isRequestable) {
-        widget.onLayerToggled(child.name!, select);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: widget.studies.length,
       itemBuilder: (context, index) {
         final study = widget.studies[index];
-        final isExpanded = _expandedStudies.contains(study.name);
-        final isFullySelected = _isStudyFullySelected(study);
-        final isPartiallySelected = _isStudyPartiallySelected(study);
+        final studyName = study.name;
+        if (studyName == null) return const SizedBox.shrink();
+
+        final isExpanded = _expandedStudies.contains(studyName);
+        final isStudyEnabled = widget.enabledStudies.contains(studyName);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListTile(
               leading: Checkbox(
-                value: isFullySelected,
-                tristate: true,
+                value: isStudyEnabled,
                 onChanged: (value) {
-                  _toggleStudy(study, value == true || !isPartiallySelected && !isFullySelected);
+                  widget.onStudyToggled(studyName, value ?? false);
                 },
               ),
               title: Text(
@@ -100,9 +79,9 @@ class _StudyListState extends State<StudyList> {
                     onPressed: () {
                       setState(() {
                         if (isExpanded) {
-                          _expandedStudies.remove(study.name);
+                          _expandedStudies.remove(studyName);
                         } else {
-                          _expandedStudies.add(study.name!);
+                          _expandedStudies.add(studyName);
                         }
                       });
                     },
@@ -118,7 +97,8 @@ class _StudyListState extends State<StudyList> {
                       .where((c) => c.isRequestable)
                       .map((layer) => _LayerTile(
                             layer: layer,
-                            isSelected: widget.enabledLayerNames.contains(layer.name),
+                            isSelected: widget.enabledLayers.contains(layer.name),
+                            isParentEnabled: isStudyEnabled,
                             onToggle: (v) => widget.onLayerToggled(layer.name!, v),
                             onZoomTo: () => widget.onZoomTo(layer),
                           ))
@@ -137,24 +117,42 @@ class _LayerTile extends StatelessWidget {
   const _LayerTile({
     required this.layer,
     required this.isSelected,
+    required this.isParentEnabled,
     required this.onToggle,
     required this.onZoomTo,
   });
 
   final WmsLayer layer;
   final bool isSelected;
+  final bool isParentEnabled;
   final void Function(bool) onToggle;
   final VoidCallback onZoomTo;
 
   @override
   Widget build(BuildContext context) {
+    final effectivelyEnabled = isSelected && isParentEnabled;
+    
     return ListTile(
       dense: true,
       leading: Checkbox(
         value: isSelected,
         onChanged: (v) => onToggle(v ?? false),
       ),
-      title: Text(layer.title),
+      title: Text(
+        layer.title,
+        style: TextStyle(
+          color: effectivelyEnabled ? null : Theme.of(context).disabledColor,
+        ),
+      ),
+      subtitle: !isParentEnabled && isSelected
+          ? Text(
+              'Parent study disabled',
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.error,
+              ),
+            )
+          : null,
       trailing: layer.bbox3857 != null
           ? IconButton(
               icon: const Icon(Icons.zoom_in_map, size: 18),

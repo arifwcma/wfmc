@@ -28,15 +28,25 @@ wfma (root)
 
 ## UI Specification
 
+### Startup behavior
+- Load WCMA boundary from `assets/wcma_boundary.geojson`
+- Zoom to fit WCMA boundary
+- Display boundary as black border with transparent fill
+
 ### Layer panel (drawer)
 - Show **studies** (children of "Depth" group) at the first level
 - Show **layers** (children of each study) at the second level
 - All studies **expanded by default**
-- Support **multi-select** (multiple layers can be active simultaneously)
-- Checkbox on study toggles all its child layers
+- **GIS-style visibility**: A layer is only visible on the map if BOTH:
+  - The layer checkbox is checked
+  - The parent study checkbox is checked
+- Study checkbox controls study visibility (not child layers)
 
-### Default selected layers (on startup)
-One 100-year layer per study:
+### Default selections (on startup)
+**Studies enabled:**
+- All 10 studies enabled by default
+
+**Layers enabled (one 100-year layer per study):**
 - Concongella_100y_d_Max
 - Dunm17RvDepthARI100
 - HGAP17RvDepthARI100
@@ -51,9 +61,11 @@ One 100-year layer per study:
 
 ### Map view
 - OpenStreetMap basemap
-- WMS overlay for selected layers (EPSG:3857)
+- WCMA boundary overlay (black border, transparent fill)
+- WMS overlay for active layers (EPSG:3857)
 - Tap to identify (GetFeatureInfo)
 - Legend panel (toggle visibility)
+- Home button to zoom back to WCMA boundary
 
 ## Technical details
 
@@ -75,12 +87,13 @@ One 100-year layer per study:
 lib/
 ├── main.dart
 ├── config/
-│   └── app_config.dart        (default layers, constants)
+│   └── app_config.dart        (default studies/layers, constants)
 ├── models/
 │   └── wms_models.dart        (WmsLayer, WmsBBox, WmsCapabilities)
 ├── screens/
 │   └── home_screen.dart       (main UI)
 ├── services/
+│   ├── boundary_service.dart  (WCMA boundary GeoJSON loader)
 │   ├── settings_store.dart    (endpoint configuration)
 │   ├── wms_capabilities_service.dart
 │   ├── wms_feature_info_service.dart
@@ -90,5 +103,8 @@ lib/
 └── widgets/
     ├── legend_card.dart
     ├── status_chip.dart
-    └── study_list.dart        (layer selection UI)
+    └── study_list.dart        (GIS-style layer selection UI)
+
+assets/
+└── wcma_boundary.geojson      (WCMA catchment boundary)
 ```
