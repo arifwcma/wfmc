@@ -4,15 +4,16 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/app_config.dart';
 import '../models/wms_models.dart';
 import '../services/settings_store.dart';
 import '../services/wms_capabilities_service.dart';
 import '../services/wms_feature_info_service.dart';
 import '../services/wms_tile_provider.dart';
 import '../utils/epsg_utils.dart';
-import '../widgets/layer_tree.dart';
 import '../widgets/legend_card.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/study_list.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.prefs});
@@ -31,12 +32,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final MapController _mapController = MapController();
 
   WmsCapabilities? _caps;
+  List<WmsLayer> _studies = [];
   Object? _capsError;
   bool _loadingCaps = true;
   bool _identifying = false;
 
   final Set<String> _enabledLayerNames = <String>{};
-  bool _showLegend = true;
+  bool _showLegend = false;
 
   @override
   void initState() {
@@ -75,7 +77,15 @@ class _HomeScreenState extends State<HomeScreen> {
         capabilitiesUri: uri,
         forceRefresh: forceRefresh,
       );
-      setState(() => _caps = caps);
+      final studies = _extractStudies(caps.rootLayer);
+      
+      setState(() {
+        _caps = caps;
+        _studies = studies;
+        if (_enabledLayerNames.isEmpty) {
+          _enabledLayerNames.addAll(AppConfig.defaultSelectedLayers);
+        }
+      });
     } catch (e) {
       setState(() => _capsError = e);
     } finally {
@@ -83,12 +93,28 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  List<WmsLayer> _extractStudies(WmsLayer root) {
+    WmsLayer? depthGroup;
+    
+    void findDepth(WmsLayer layer) {
+      if (layer.name == AppConfig.depthGroupName) {
+        depthGroup = layer;
+        return;
+      }
+      for (final child in layer.children) {
+        findDepth(child);
+        if (depthGroup != null) return;
+      }
+    }
+    
+    findDepth(root);
+    return depthGroup?.children ?? [];
+  }
+
   void _toggleLayer(String layerName, bool enabled) {
     setState(() {
       if (enabled) {
-        _enabledLayerNames
-          ..clear()
-          ..add(layerName);
+        _enabledLayerNames.add(layerName);
       } else {
         _enabledLayerNames.remove(layerName);
       }
@@ -258,12 +284,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final caps = _caps;
     final activeLayers = _activeLayers;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(caps?.serviceTitle ?? 'WFMC'),
+        title: Text(_caps?.serviceTitle ?? 'Wimmera Flood Maps'),
         actions: [
           IconButton(
             tooltip: 'Refresh layers',
@@ -281,7 +306,32 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       drawer: Drawer(
         child: SafeArea(
-          child: _buildDrawerContent(caps),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Flood Studies',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${activeLayers.length} selected',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(child: _buildDrawerContent()),
+            ],
+          ),
         ),
       ),
       body: Stack(
@@ -334,8 +384,8 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: 12,
             child: StatusChip(
               text: activeLayers.isEmpty
-                  ? 'No active layer'
-                  : 'Active: ${activeLayers.join(", ")}',
+                  ? 'No layers selected'
+                  : '${activeLayers.length} layer${activeLayers.length == 1 ? '' : 's'} active',
               icon: activeLayers.isEmpty ? Icons.layers_clear : Icons.layers,
             ),
           ),
@@ -374,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDrawerContent(WmsCapabilities? caps) {
+  Widget _buildDrawerContent() {
     if (_loadingCaps) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -399,8 +449,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-    return LayerTree(
-      root: caps!.rootLayer,
+    return StudyList(
+      studies: _studies,
       enabledLayerNames: _enabledLayerNames,
       onLayerToggled: _toggleLayer,
       onZoomTo: _zoomTo,
