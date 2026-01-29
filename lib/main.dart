@@ -1,0 +1,29 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'screens/home_screen.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  runApp(WfmcApp(prefs: prefs));
+}
+
+class WfmcApp extends StatelessWidget {
+  const WfmcApp({super.key, required this.prefs});
+
+  final SharedPreferences prefs;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'WFMC',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B5FFF)),
+        useMaterial3: true,
+      ),
+      home: HomeScreen(prefs: prefs),
+    );
+  }
+}
