@@ -54,18 +54,9 @@ extension BasemapTypeExtension on BasemapType {
       case BasemapType.cartographic:
         return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
       case BasemapType.topographic:
-        return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+        return 'https://tile.opentopomap.org/{z}/{x}/{y}.png';
       case BasemapType.satellite:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-    }
-  }
-
-  List<String>? get subdomains {
-    switch (this) {
-      case BasemapType.topographic:
-        return ['a', 'b', 'c'];
-      default:
-        return null;
     }
   }
 }

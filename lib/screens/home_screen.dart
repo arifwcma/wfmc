@@ -81,18 +81,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadBoundary() async {
     await _boundaryService.load();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _zoomToBoundary();
+    }
   }
 
   void _zoomToBoundary() {
     final bounds = _boundaryService.bounds;
     if (bounds != null && _mapReady) {
-      _mapController.fitCamera(
-        CameraFit.bounds(
-          bounds: bounds,
-          padding: const EdgeInsets.all(20),
-        ),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: bounds,
+            padding: const EdgeInsets.all(32),
+          ),
+        );
+      });
     }
   }
 
@@ -227,76 +232,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _openSettings() async {
-    final baseCtrl = TextEditingController(text: _settings.baseEndpoint);
-    final mapCtrl = TextEditingController(text: _settings.mapPath);
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Settings',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: baseCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'WMS base endpoint',
-                  hintText: 'https://wimmera.xyz/qgis/',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: mapCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'MAP path',
-                  hintText: '/var/www/qgis/wfma/wfma.qgs',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: () async {
-                    await _settings.setBaseEndpoint(baseCtrl.text.trim());
-                    await _settings.setMapPath(mapCtrl.text.trim());
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    await _loadCapabilities(forceRefresh: true);
-                  },
-                  child: const Text('Save & refresh'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _identify(TapPosition tapPosition, LatLng latLng) async {
     final active = _activeLayers;
     if (active.isEmpty) return;
@@ -379,47 +314,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String? get _legendUrl {
-    final layers = _activeLayers;
-    if (layers.isEmpty) return null;
-    return WmsCapabilitiesService.buildLegendUri(
-      baseEndpoint: _baseEndpointUri,
-      mapPath: _mapPath,
-      layerName: layers.first,
-    ).toString();
-  }
+  bool get _hasActiveLayers => _activeLayers.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     final activeLayers = _activeLayers;
     final boundaryPolygons = _boundaryService.polygons;
-    final legendUrl = _legendUrl;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_caps?.serviceTitle ?? 'Wimmera Flood Maps'),
         actions: [
           IconButton(
-            tooltip: 'Zoom to region',
-            onPressed: _zoomToBoundary,
-            icon: const Icon(Icons.home),
-          ),
-          IconButton(
             tooltip: 'Select basemap',
             onPressed: _showBasemapSelector,
             icon: const Icon(Icons.layers),
-          ),
-          IconButton(
-            tooltip: 'Refresh layers',
-            onPressed: _loadingCaps
-                ? null
-                : () => _loadCapabilities(forceRefresh: true),
-            icon: const Icon(Icons.refresh),
-          ),
-          IconButton(
-            tooltip: 'Settings',
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings),
           ),
         ],
       ),
@@ -469,7 +378,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               TileLayer(
                 urlTemplate: _basemap.urlTemplate,
-                subdomains: _basemap.subdomains ?? const [],
                 userAgentPackageName: 'au.gov.vic.wcma.wfmc',
               ),
               if (activeLayers.isNotEmpty)
@@ -498,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          if (legendUrl != null)
+          if (_hasActiveLayers)
             Positioned(
               top: 12,
               right: 12,
@@ -506,32 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(8),
-                  child: Image.network(
-                    legendUrl,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const SizedBox(
-                        width: 60,
-                        height: 60,
-                        child: Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const SizedBox(
-                        width: 60,
-                        height: 40,
-                        child: Center(
-                          child: Icon(Icons.broken_image, size: 20),
-                        ),
-                      );
-                    },
-                  ),
+                  child: Image.asset('assets/legend.png'),
                 ),
               ),
             ),
