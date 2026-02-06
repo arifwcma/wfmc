@@ -39,6 +39,7 @@ dependencies:
   xml: ^6.6.1
   shared_preferences: ^2.5.4
   latlong2: ^0.9.1
+  pool: ^1.5.1
 
 dev_dependencies:
   flutter_test:

@@ -33,7 +33,6 @@ class AppConfig {
 
 enum BasemapType {
   cartographic,
-  topographic,
   satellite,
 }
 
@@ -42,8 +41,6 @@ extension BasemapTypeExtension on BasemapType {
     switch (this) {
       case BasemapType.cartographic:
         return 'Cartographic';
-      case BasemapType.topographic:
-        return 'Topographic';
       case BasemapType.satellite:
         return 'Satellite';
     }
@@ -53,8 +50,6 @@ extension BasemapTypeExtension on BasemapType {
     switch (this) {
       case BasemapType.cartographic:
         return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-      case BasemapType.topographic:
-        return 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png';
       case BasemapType.satellite:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
     }

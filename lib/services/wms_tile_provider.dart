@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:pool/pool.dart';
+
+final _requestPool = Pool(4);
 
 class WmsTileProvider extends TileProvider {
   WmsTileProvider({
@@ -91,16 +94,25 @@ class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
   }
 
   Future<ui.Codec> _loadAsync(WmsNetworkImage key, ImageDecoderCallback decode) async {
-    final res = await httpClient.get(key.url);
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('Tile fetch failed: HTTP ${res.statusCode}');
-    }
-    final bytes = res.bodyBytes;
-    if (bytes.isEmpty) {
-      throw Exception('Tile fetch returned empty body');
-    }
-    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-    return decode(buffer);
+    return _requestPool.withResource(() async {
+      try {
+        debugPrint('WMS tile request: ${key.url}');
+        final res = await httpClient.get(key.url);
+        debugPrint('WMS tile response: ${res.statusCode}, ${res.bodyBytes.length} bytes');
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          throw Exception('Tile fetch failed: HTTP ${res.statusCode}');
+        }
+        final bytes = res.bodyBytes;
+        if (bytes.isEmpty) {
+          throw Exception('Tile fetch returned empty body');
+        }
+        final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+        return decode(buffer);
+      } catch (e, st) {
+        debugPrint('WMS tile error: $e\n$st');
+        rethrow;
+      }
+    });
   }
 
   @override

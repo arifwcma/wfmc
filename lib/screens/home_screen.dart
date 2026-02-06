@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../models/wms_models.dart';
 import '../services/boundary_service.dart';
+import '../services/http_client_factory.dart';
 import '../services/settings_store.dart';
 import '../services/wms_capabilities_service.dart';
 import '../services/wms_feature_info_service.dart';
@@ -39,14 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _identifying = false;
   bool _mapReady = false;
 
-  final Set<String> _enabledStudies = <String>{};
-  final Set<String> _enabledLayers = <String>{};
+  Set<String> _enabledStudies = <String>{};
+  Set<String> _enabledLayers = <String>{};
   BasemapType _basemap = BasemapType.cartographic;
 
   @override
   void initState() {
     super.initState();
-    _httpClient = http.Client();
+    _httpClient = createHttpClient();
     _settings = SettingsStore(widget.prefs);
     _capsService = WmsCapabilitiesService(
       httpClient: _httpClient,
@@ -76,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     effective.sort();
+    debugPrint('_activeLayers: enabled=${_enabledLayers.length}, studies=${_enabledStudies.length}, mapped=${_layerToStudy.length}, active=${effective.length}');
     return effective;
   }
 
@@ -131,10 +133,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _studies = studies;
         _layerToStudy = layerToStudy;
         if (_enabledStudies.isEmpty) {
-          _enabledStudies.addAll(AppConfig.defaultEnabledStudies);
+          _enabledStudies = Set<String>.from(AppConfig.defaultEnabledStudies);
         }
         if (_enabledLayers.isEmpty) {
-          _enabledLayers.addAll(AppConfig.defaultEnabledLayers);
+          _enabledLayers = Set<String>.from(AppConfig.defaultEnabledLayers);
         }
       });
     } catch (e) {
@@ -163,23 +165,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _toggleStudy(String studyName, bool enabled) {
-    setState(() {
-      if (enabled) {
-        _enabledStudies.add(studyName);
-      } else {
-        _enabledStudies.remove(studyName);
-      }
-    });
+    final newSet = Set<String>.from(_enabledStudies);
+    if (enabled) {
+      newSet.add(studyName);
+    } else {
+      newSet.remove(studyName);
+    }
+    setState(() => _enabledStudies = newSet);
   }
 
   void _toggleLayer(String layerName, bool enabled) {
-    setState(() {
-      if (enabled) {
-        _enabledLayers.add(layerName);
-      } else {
-        _enabledLayers.remove(layerName);
-      }
-    });
+    final newSet = Set<String>.from(_enabledLayers);
+    if (enabled) {
+      newSet.add(layerName);
+    } else {
+      newSet.remove(layerName);
+    }
+    setState(() => _enabledLayers = newSet);
   }
 
   void _zoomTo(WmsLayer layer) {
@@ -369,6 +371,9 @@ class _HomeScreenState extends State<HomeScreen> {
             options: MapOptions(
               initialCenter: const LatLng(-36.7, 142.2),
               initialZoom: 7,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
               onTap: _identify,
               onMapReady: () {
                 _mapReady = true;
@@ -377,11 +382,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             children: [
               TileLayer(
+                key: ValueKey(_basemap),
                 urlTemplate: _basemap.urlTemplate,
                 userAgentPackageName: 'au.gov.vic.wcma.wfmc',
               ),
               if (activeLayers.isNotEmpty)
                 TileLayer(
+                  key: ValueKey(activeLayers.join(',')),
                   tileProvider: WmsTileProvider(
                     httpClient: _httpClient,
                     baseEndpoint: _baseEndpointUri,
