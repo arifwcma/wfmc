@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,42 +7,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:pool/pool.dart';
 
+import 'tile_cache.dart';
+
+export 'tile_cache.dart' show TileCache;
+
 final _requestPool = Pool(4);
-
-// ---------------------------------------------------------------------------
-// Simple on-disk tile cache for offline fallback.
-// ---------------------------------------------------------------------------
-
-class TileCache {
-  static String? _basePath;
-
-  static void initialize(String basePath) {
-    _basePath = basePath;
-    Directory(basePath).createSync(recursive: true);
-  }
-
-  /// Deterministic hash key for a URL (FNV-1a 32-bit).
-  static String keyFor(Uri url) {
-    final input = url.toString();
-    int hash = 0x811c9dc5;
-    for (int i = 0; i < input.length; i++) {
-      hash ^= input.codeUnitAt(i);
-      hash = (hash * 0x01000193) & 0xFFFFFFFF;
-    }
-    return hash.toRadixString(16).padLeft(8, '0');
-  }
-
-  static File? getFile(String key) {
-    if (_basePath == null) return null;
-    final file = File('$_basePath/$key.png');
-    return file.existsSync() ? file : null;
-  }
-
-  static Future<void> putFile(String key, Uint8List bytes) async {
-    if (_basePath == null) return;
-    await File('$_basePath/$key.png').writeAsBytes(bytes);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // WMS tile provider

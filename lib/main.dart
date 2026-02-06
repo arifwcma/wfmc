@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,9 +10,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
 
-  // Initialise on-disk tile cache for offline fallback.
-  final cacheDir = await getTemporaryDirectory();
-  TileCache.initialize('${cacheDir.path}/wms_tiles');
+  // Initialise on-disk tile cache (mobile / desktop only).
+  if (!kIsWeb) {
+    final cacheDir = await getTemporaryDirectory();
+    TileCache.initialize('${cacheDir.path}/wms_tiles');
+  }
 
   runApp(WfmcApp(prefs: prefs));
 }

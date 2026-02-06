@@ -82,7 +82,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   LatLng? _userLocation;
   bool _locating = false;
-  bool _autoLocated = false;
 
   // ---- Lifecycle ---------------------------------------------------------
 
@@ -188,12 +187,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _enabledLayers = Set<String>.from(AppConfig.defaultEnabledLayers);
         }
       });
-
-      // Auto-locate on first successful load.
-      if (!_autoLocated) {
-        _autoLocated = true;
-        _tryAutoLocate();
-      }
     } catch (e) {
       setState(() => _capsError = e);
     } finally {
@@ -217,21 +210,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     findDepth(root);
     return depthGroup?.children ?? [];
-  }
-
-  /// Silently try to get user location on first launch and auto-select the
-  /// nearest 100-year flood map.
-  Future<void> _tryAutoLocate() async {
-    try {
-      final loc = await _locationService.getCurrentLocation();
-      if (loc != null && mounted) {
-        setState(() => _userLocation = loc);
-        _autoSelectClosestStudy(loc);
-        _mapController.move(loc, 13);
-      }
-    } catch (_) {
-      // Silently ignore — user can tap the Locate Me button manually.
-    }
   }
 
   // ---- Layer management --------------------------------------------------
