@@ -1,6 +1,15 @@
 class AppConfig {
   AppConfig._();
 
+  static const orgName = 'Wimmera Catchment Management Authority';
+  static const orgShortName = 'Wimmera CMA';
+  static const orgWebsite = 'https://wcma.vic.gov.au';
+  static const orgPhone = '(03) 5382 1544';
+  static const orgPhoneUri = 'tel:+61353821544';
+  static const contactEmail = 'software@wcma.vic.gov.au';
+  static const contactDisplayName = 'Software App Developer';
+  static const feedbackSubject = 'Wimmera Flood Maps Feedback';
+
   static const depthGroupName = 'Depth';
 
   static const defaultEnabledStudies = <String>{
@@ -25,9 +34,9 @@ class AppConfig {
     'dep_100y',
     'Stawell24RvDepthARI100',
     'StawellG24RvDepthARI100',
-    'UW_E01_100y_052_D_Max_g007.50',
+    'UW_E01_100y_052_D_Max_g007_50',
     'WaBr15Dep100',
-    '100y_existing_flood_depths',
+    'l_100y_existing_flood_depths',
   };
 }
 

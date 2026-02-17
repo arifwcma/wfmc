@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
+
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -42,22 +44,22 @@ class AboutScreen extends StatelessWidget {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.language),
-            title: const Text('Visit Wimmera CMA Website'),
-            subtitle: const Text('wcma.vic.gov.au'),
-            onTap: () => launchUrl(Uri.parse('https://wcma.vic.gov.au')),
+            title: const Text('Visit ${AppConfig.orgShortName} Website'),
+            subtitle: Text(Uri.parse(AppConfig.orgWebsite).host),
+            onTap: () => launchUrl(Uri.parse(AppConfig.orgWebsite)),
           ),
           ListTile(
             leading: const Icon(Icons.email),
             title: const Text('Contact Us'),
-            subtitle: const Text('wcma@wcma.vic.gov.au'),
+            subtitle: const Text(AppConfig.contactEmail),
             onTap: () =>
-                launchUrl(Uri.parse('mailto:wcma@wcma.vic.gov.au')),
+                launchUrl(Uri.parse('mailto:${AppConfig.contactEmail}')),
           ),
           ListTile(
             leading: const Icon(Icons.phone),
             title: const Text('Phone'),
-            subtitle: const Text('(03) 5382 1544'),
-            onTap: () => launchUrl(Uri.parse('tel:+61353821544')),
+            subtitle: const Text(AppConfig.orgPhone),
+            onTap: () => launchUrl(Uri.parse(AppConfig.orgPhoneUri)),
           ),
         ],
       ),

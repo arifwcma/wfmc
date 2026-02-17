@@ -343,8 +343,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
         double? depth;
         for (final entry in props.entries) {
+          double? parsed;
           if (entry.value is num) {
-            depth = (entry.value as num).toDouble();
+            parsed = (entry.value as num).toDouble();
+          } else if (entry.value is String) {
+            parsed = double.tryParse(entry.value as String);
+          }
+          if (parsed != null && parsed > 0) {
+            depth = parsed;
             break;
           }
         }
@@ -352,6 +358,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final studyName = _layerToStudy[layerName];
         final studyInfo =
             studyName != null ? StudyMetadata.studies[studyName] : null;
+
+        if (depth == null) continue;
 
         results.add(_IdentifyResult(
           layerName: layerName,
@@ -373,6 +381,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _showIdentifyResults(
       List<_IdentifyResult> results, LatLng latLng) async {
+    // Group results by study so report link appears once per study.
+    final grouped = <String, List<_IdentifyResult>>{};
+    final ungrouped = <_IdentifyResult>[];
+    for (final r in results) {
+      if (r.studyName != null) {
+        (grouped[r.studyName!] ??= []).add(r);
+      } else {
+        ungrouped.add(r);
+      }
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -408,26 +427,27 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (final r in results) ...[
-                          if (r.studyInfo != null) ...[
+                        for (final entry in grouped.entries) ...[
+                          if (entry.value.first.studyInfo != null) ...[
                             Text(
-                              '${r.studyInfo!.displayName} '
-                              '(completed ${r.studyInfo!.completionYear})',
+                              '${entry.value.first.studyInfo!.displayName} '
+                              '${entry.value.first.studyInfo!.completionYear}',
                               style:
                                   const TextStyle(fontWeight: FontWeight.w600),
                             ),
-                            if (r.depth != null)
+                            for (final r in entry.value)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
-                                  'Flood depth: ${r.depth!.toStringAsFixed(2)} m',
+                                  '${r.layerName}: ${r.depth!.toStringAsFixed(2)} m',
                                   style: const TextStyle(fontSize: 16),
                                 ),
                               ),
                             const SizedBox(height: 8),
                             InkWell(
                               onTap: () => launchUrl(
-                                Uri.parse(r.studyInfo!.reportUrl),
+                                Uri.parse(
+                                    entry.value.first.studyInfo!.reportUrl),
                                 mode: LaunchMode.externalApplication,
                               ),
                               child: Text(
@@ -438,16 +458,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
-                          ] else ...[
-                            Text(
-                              r.layerName,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            if (r.depth != null)
-                              Text(
-                                  'Flood depth: ${r.depth!.toStringAsFixed(2)} m'),
                           ],
+                          const Divider(),
+                        ],
+                        for (final r in ungrouped) ...[
+                          Text(
+                            r.layerName,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                              'Flood depth: ${r.depth!.toStringAsFixed(2)} m'),
                           const Divider(),
                         ],
                       ],
@@ -701,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_caps?.serviceTitle ?? 'Wimmera Flood Maps'),
+        title: const Text('Wimmera Flood Map'),
         actions: [
           IconButton(
             tooltip: 'Search location',
@@ -729,8 +750,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 case 'feedback':
                   launchUrl(
                     Uri.parse(
-                      'mailto:wcma@wcma.vic.gov.au'
-                      '?subject=Wimmera%20Flood%20Maps%20Feedback',
+                      'mailto:${AppConfig.contactEmail}'
+                      '?subject=${Uri.encodeComponent(AppConfig.feedbackSubject)}',
                     ),
                   );
               }
@@ -933,8 +954,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 launchUrl(
                   Uri.parse(
-                    'mailto:wcma@wcma.vic.gov.au'
-                    '?subject=Wimmera%20Flood%20Maps%20Feedback',
+                    'mailto:${AppConfig.contactEmail}'
+                    '?subject=${Uri.encodeComponent(AppConfig.feedbackSubject)}',
                   ),
                 );
               },

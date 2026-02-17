@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/study_metadata.dart';
 import '../models/wms_models.dart';
 
 class StudyList extends StatefulWidget {
@@ -30,11 +31,15 @@ class _StudyListState extends State<StudyList> {
   @override
   void initState() {
     super.initState();
-    for (final study in widget.studies) {
-      if (study.name != null) {
-        _expandedStudies.add(study.name!);
-      }
+    // Start collapsed for fast drawer rendering.
+  }
+
+  String _studyDisplayName(String studyName) {
+    final info = StudyMetadata.studies[studyName];
+    if (info != null) {
+      return '${info.displayName} ${info.completionYear}';
     }
+    return studyName;
   }
 
   @override
@@ -60,7 +65,7 @@ class _StudyListState extends State<StudyList> {
                 },
               ),
               title: Text(
-                study.title,
+                _studyDisplayName(studyName),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               trailing: Row(

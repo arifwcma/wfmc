@@ -1,6 +1,5 @@
 /// Metadata for each flood study area.
 ///
-/// Report URLs are stubs — update with real URLs when available.
 class StudyInfo {
   const StudyInfo({
     required this.displayName,
@@ -18,71 +17,76 @@ class StudyInfo {
 class StudyMetadata {
   StudyMetadata._();
 
-  static const _base =
-      'https://wcma.vic.gov.au/wp-content/uploads/2022/05/';
-
-  // TODO(arif): Replace stub report URLs with real ones.
   static final Map<String, StudyInfo> studies = {
     'Concongella_2015': StudyInfo(
-      displayName: 'Concongella Creek Flood Investigation',
+      displayName: 'Concongella',
       completionYear: 2015,
-      reportUrl: '${_base}ConcongeFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/concongella-ck-regional-flood-mapping-stage-1-draft.pdf',
       layers100yr: const ['Concongella_100y_d_Max'],
     ),
     'Dunmunkle_2017': StudyInfo(
-      displayName: 'Dunmunkle Creek Flood Investigation',
+      displayName: 'Dunmunkle',
       completionYear: 2017,
-      reportUrl: '${_base}DunmunkleFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/dunmunkle-creek-fi_report_lr.pdf',
       layers100yr: const ['Dunm17RvDepthARI100'],
     ),
     'HallsGap_2017': StudyInfo(
-      displayName: 'Halls Gap Flood Investigation',
+      displayName: 'Halls Gap',
       completionYear: 2017,
-      reportUrl: '${_base}HallsGapFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/4148-01r04v04_halls_gap_final_report.pdf',
       layers100yr: const ['HGAP17RvDepthARI100'],
     ),
     'HorshamWartook_2017': StudyInfo(
-      displayName: 'Horsham and Wartook Valley Flood Investigation',
+      displayName: 'Horsham Wartook',
       completionYear: 2019,
-      reportUrl: '${_base}HorshamWartookFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/HorshamWartookFIFinalReport.pdf',
       layers100yr: const ['Hors19RvDepthARI100'],
     ),
     'MountWilliam_2014': StudyInfo(
-      displayName: 'Mount William Creek Flood Investigation',
+      displayName: 'Mount William',
       completionYear: 2014,
-      reportUrl: '${_base}MountWilliamFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/mt-william-ck-flood-investigation-r-m20045-007-01_lr.pdf',
       layers100yr: const ['MTW_E01_100Y_050_D_MAX'],
     ),
     'Natimuk_2013': StudyInfo(
-      displayName: 'Natimuk Catchment Flood Investigation',
+      displayName: 'Natimuk',
       completionYear: 2013,
-      reportUrl: '${_base}NatimukFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/flood-investigation-natimuk.pdf',
       layers100yr: const ['dep_100y'],
     ),
     'Stawell_2024': StudyInfo(
-      displayName: 'Stawell Flood Investigation',
+      displayName: 'Stawell',
       completionYear: 2024,
-      reportUrl: '${_base}StawellFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2025/01/R06-Stawell-Flood-Investigation-Final-Study-Report-v02.pdf',
       layers100yr: const ['Stawell24RvDepthARI100', 'StawellG24RvDepthARI100'],
     ),
     'UpperWimmera_2014': StudyInfo(
-      displayName: 'Upper Wimmera Flood Investigation',
+      displayName: 'Upper Wimmera',
       completionYear: 2014,
-      reportUrl: '${_base}UpperWimmeraFIFinalReport.pdf',
-      layers100yr: const ['UW_E01_100y_052_D_Max_g007.50'],
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/upper-wimmera-flood-investigation-r-m8460-009-01_lr.pdf',
+      layers100yr: const ['UW_E01_100y_052_D_Max_g007_50'],
     ),
     'WarracknabealBrim_2016': StudyInfo(
-      displayName: 'Warracknabeal and Brim Flood Investigation',
+      displayName: 'Warracknabeal Brim',
       completionYear: 2016,
-      reportUrl: '${_base}WarracknabealBrimFIFinalReport.pdf',
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/flood-investigation-warracknabeal-and-brim.pdf',
       layers100yr: const ['WaBr15Dep100'],
     ),
     'WimmeraRiverYarriambiackCreek_2010': StudyInfo(
-      displayName: 'Wimmera River and Yarriambiack Creek Flood Investigation',
+      displayName: 'Wimmera River Yarriambiack Creek',
       completionYear: 2010,
       reportUrl:
-          '${_base}WimmeraRiverYarriambiackCreekFIFinalReport.pdf',
-      layers100yr: const ['100y_existing_flood_depths'],
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/flood-investigation-wimmera-river-amp-yarriambiack-creek-flow-modelling.pdf',
+      layers100yr: const ['l_100y_existing_flood_depths'],
     ),
   };
 }

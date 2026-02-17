@@ -9,7 +9,7 @@ class SettingsStore {
   static const _mapPathKey = 'settings.mapPath';
 
   static const defaultBaseEndpoint = 'https://wimmera.xyz/qgis/';
-  static const defaultMapPath = '/var/www/qgis/wfma/wfma.qgs';
+  static const defaultMapPath = '/srv/data/wfml/wfml.qgs';
 
   String get baseEndpoint => prefs.getString(_baseEndpointKey) ?? defaultBaseEndpoint;
   String get mapPath => prefs.getString(_mapPathKey) ?? defaultMapPath;
