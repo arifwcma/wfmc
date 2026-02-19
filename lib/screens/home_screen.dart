@@ -83,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
   LatLng? _userLocation;
   bool _locating = false;
   double _sheetPixelHeight = 0;
+  bool _cameraSettled = false;
 
   // ---- Lifecycle ---------------------------------------------------------
 
@@ -148,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(32),
           ),
         );
+        if (mounted) setState(() => _cameraSettled = true);
       });
     }
   }
@@ -790,17 +792,22 @@ class _HomeScreenState extends State<HomeScreen> {
               onMapReady: () {
                 _mapReady = true;
                 _zoomToBoundary();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !_cameraSettled) {
+                    setState(() => _cameraSettled = true);
+                  }
+                });
               },
             ),
             children: [
               TileLayer(
-                key: ValueKey(_basemap),
+                key: ValueKey('${_basemap}_$_cameraSettled'),
                 urlTemplate: _basemap.urlTemplate,
                 userAgentPackageName: 'au.gov.vic.wcma.wfmc',
               ),
               if (activeLayers.isNotEmpty)
                 TileLayer(
-                  key: ValueKey(activeLayers.join(',')),
+                  key: ValueKey('${activeLayers.join(",")}_$_cameraSettled'),
                   tileProvider: WmsTileProvider(
                     httpClient: _httpClient,
                     baseEndpoint: _baseEndpointUri,
@@ -938,7 +945,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.88),
+              color: Colors.white.withOpacity(0.58),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
               boxShadow: const [
