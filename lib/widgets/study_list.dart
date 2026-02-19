@@ -46,77 +46,98 @@ class _StudyListState extends State<StudyList> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return CustomScrollView(
       controller: widget.scrollController,
-      itemCount: widget.studies.length,
-      itemBuilder: (context, index) {
-        final study = widget.studies[index];
-        final studyName = study.name;
-        if (studyName == null) return const SizedBox.shrink();
-
-        final isExpanded = _expandedStudies.contains(studyName);
-        final isStudyEnabled = widget.enabledStudies.contains(studyName);
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: Checkbox(
-                value: isStudyEnabled,
-                onChanged: (value) {
-                  widget.onStudyToggled(studyName, value ?? false);
-                },
-              ),
-              title: Text(
-                _studyDisplayName(studyName),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (study.bbox3857 != null)
-                    IconButton(
-                      icon: const Icon(Icons.zoom_in_map, size: 20),
-                      onPressed: () => widget.onZoomTo(study),
-                      tooltip: 'Zoom to study',
-                    ),
-                  IconButton(
-                    icon: Icon(
-                      isExpanded ? Icons.expand_less : Icons.expand_more,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        if (isExpanded) {
-                          _expandedStudies.remove(studyName);
-                        } else {
-                          _expandedStudies.add(studyName);
-                        }
-                      });
-                    },
-                  ),
-                ],
+      slivers: [
+        // Drag handle
+        SliverToBoxAdapter(
+          child: Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            if (isExpanded)
-              Padding(
-                padding: const EdgeInsets.only(left: 24),
-                child: Column(
-                  children: study.children
-                      .where((c) => c.isRequestable)
-                      .map((layer) => _LayerTile(
-                            layer: layer,
-                            isSelected: widget.enabledLayers.contains(layer.name),
-                            isParentEnabled: isStudyEnabled,
-                            onToggle: (v) => widget.onLayerToggled(layer.name!, v),
-                            onZoomTo: () => widget.onZoomTo(layer),
-                          ))
-                      .toList(),
+          ),
+        ),
+        // Study items
+        SliverList.builder(
+          itemCount: widget.studies.length,
+          itemBuilder: (context, index) {
+            final study = widget.studies[index];
+            final studyName = study.name;
+            if (studyName == null) return const SizedBox.shrink();
+
+            final isExpanded = _expandedStudies.contains(studyName);
+            final isStudyEnabled = widget.enabledStudies.contains(studyName);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: Checkbox(
+                    value: isStudyEnabled,
+                    onChanged: (value) {
+                      widget.onStudyToggled(studyName, value ?? false);
+                    },
+                  ),
+                  title: Text(
+                    _studyDisplayName(studyName),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (study.bbox3857 != null)
+                        IconButton(
+                          icon: const Icon(Icons.zoom_in_map, size: 20),
+                          onPressed: () => widget.onZoomTo(study),
+                          tooltip: 'Zoom to study',
+                        ),
+                      IconButton(
+                        icon: Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (isExpanded) {
+                              _expandedStudies.remove(studyName);
+                            } else {
+                              _expandedStudies.add(studyName);
+                            }
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            const Divider(height: 1),
-          ],
-        );
-      },
+                if (isExpanded)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 24),
+                    child: Column(
+                      children: study.children
+                          .where((c) => c.isRequestable)
+                          .map((layer) => _LayerTile(
+                                layer: layer,
+                                isSelected:
+                                    widget.enabledLayers.contains(layer.name),
+                                isParentEnabled: isStudyEnabled,
+                                onToggle: (v) =>
+                                    widget.onLayerToggled(layer.name!, v),
+                                onZoomTo: () => widget.onZoomTo(layer),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                const Divider(height: 1),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }

@@ -82,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   LatLng? _userLocation;
   bool _locating = false;
+  double _sheetPixelHeight = 0;
 
   // ---- Lifecycle ---------------------------------------------------------
 
@@ -717,6 +718,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_sheetPixelHeight == 0) {
+      _sheetPixelHeight =
+          MediaQuery.sizeOf(context).height * _sheetInitial;
+    }
     final activeLayers = _activeLayers;
     final boundaryPolygons = _boundaryService.polygons;
 
@@ -881,22 +886,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          // Layers button (bottom-left)
-          Positioned(
-            left: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              heroTag: 'layers',
-              onPressed: _showLayersSheet,
-              icon: const Icon(Icons.layers),
-              label: Text('${activeLayers.length}'),
-              tooltip: 'Flood study layers',
-            ),
-          ),
-          // Locate me button (bottom-right)
+          // Locate me button
           Positioned(
             right: 16,
-            bottom: 16,
+            bottom: _sheetPixelHeight + 12,
             child: FloatingActionButton(
               heroTag: 'locate',
               onPressed: _locating ? null : _locateMe,
@@ -911,63 +904,55 @@ class _HomeScreenState extends State<HomeScreen> {
                   : const Icon(Icons.my_location),
             ),
           ),
+          // Persistent layers sheet
+          _buildPersistentSheet(),
         ],
       ),
     );
   }
 
-  // ---- Layers bottom sheet ------------------------------------------------
+  // ---- Persistent layers sheet (UI1) --------------------------------------
 
-  void _showLayersSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.45,
-          minChildSize: 0.25,
-          maxChildSize: 0.85,
-          expand: false,
-          builder: (ctx, scrollController) {
-            return SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Flood Studies',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${_activeLayers.length} active',
-                          style: Theme.of(ctx).textTheme.bodySmall,
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(child: _buildLayerContent(scrollController)),
-                ],
-              ),
-            );
-          },
-        );
+  static const double _sheetInitial = 0.25;
+  static const double _sheetMin = 0.05;
+  static const double _sheetMax = 0.70;
+
+  Widget _buildPersistentSheet() {
+    return NotificationListener<DraggableScrollableNotification>(
+      onNotification: (notification) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() => _sheetPixelHeight =
+                notification.extent * MediaQuery.sizeOf(context).height);
+          }
+        });
+        return false;
       },
+      child: DraggableScrollableSheet(
+        initialChildSize: _sheetInitial,
+        minChildSize: _sheetMin,
+        maxChildSize: _sheetMax,
+        snap: true,
+        snapSizes: const [_sheetMin, _sheetInitial, 0.45],
+        builder: (ctx, scrollController) {
+          return Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+              boxShadow: const [
+                BoxShadow(blurRadius: 10, color: Colors.black26),
+              ],
+            ),
+            child: _buildLayerContent(scrollController),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildLayerContent(ScrollController? scrollController) {
+  Widget _buildLayerContent(ScrollController scrollController) {
     if (_loadingCaps) {
       return const Center(child: CircularProgressIndicator());
     }
