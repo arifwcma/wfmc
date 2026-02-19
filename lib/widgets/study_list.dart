@@ -12,6 +12,7 @@ class StudyList extends StatefulWidget {
     required this.onStudyToggled,
     required this.onLayerToggled,
     required this.onZoomTo,
+    this.scrollController,
   });
 
   final List<WmsLayer> studies;
@@ -20,6 +21,7 @@ class StudyList extends StatefulWidget {
   final void Function(String studyName, bool enabled) onStudyToggled;
   final void Function(String layerName, bool enabled) onLayerToggled;
   final void Function(WmsLayer layer) onZoomTo;
+  final ScrollController? scrollController;
 
   @override
   State<StudyList> createState() => _StudyListState();
@@ -45,6 +47,7 @@ class _StudyListState extends State<StudyList> {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      controller: widget.scrollController,
       itemCount: widget.studies.length,
       itemBuilder: (context, index) {
         final study = widget.studies[index];

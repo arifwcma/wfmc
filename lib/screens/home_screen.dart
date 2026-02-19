@@ -722,6 +722,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Wimmera Flood Map'),
         actions: [
           IconButton(
@@ -769,19 +770,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
-      ),
-      drawer: _buildDrawer(activeLayers),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _locating ? null : _locateMe,
-        tooltip: 'Locate me',
-        child: _locating
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.my_location),
       ),
       body: Stack(
         children: [
@@ -893,80 +881,93 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+          // Layers button (bottom-left)
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: FloatingActionButton.extended(
+              heroTag: 'layers',
+              onPressed: _showLayersSheet,
+              icon: const Icon(Icons.layers),
+              label: Text('${activeLayers.length}'),
+              tooltip: 'Flood study layers',
+            ),
+          ),
+          // Locate me button (bottom-right)
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              heroTag: 'locate',
+              onPressed: _locating ? null : _locateMe,
+              tooltip: 'Locate me',
+              child: _locating
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.my_location),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ---- Drawer ------------------------------------------------------------
+  // ---- Layers bottom sheet ------------------------------------------------
 
-  Widget _buildDrawer(List<String> activeLayers) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+  void _showLayersSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.45,
+          minChildSize: 0.25,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return SafeArea(
+              child: Column(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Flood Studies',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Flood Studies',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${_activeLayers.length} active',
+                          style: Theme.of(ctx).textTheme.bodySmall,
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '${activeLayers.length} active',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  const Divider(height: 1),
+                  Expanded(child: _buildLayerContent(scrollController)),
                 ],
               ),
-            ),
-            const Divider(height: 1),
-            Expanded(child: _buildDrawerContent()),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.bookmark),
-              title: const Text('Saved Locations'),
-              onTap: () {
-                Navigator.pop(context);
-                _showBookmarks();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('About Wimmera CMA'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.feedback_outlined),
-              title: const Text('Send Feedback'),
-              onTap: () {
-                Navigator.pop(context);
-                launchUrl(
-                  Uri.parse(
-                    'mailto:${AppConfig.contactEmail}'
-                    '?subject=${Uri.encodeComponent(AppConfig.feedbackSubject)}',
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildDrawerContent() {
+  Widget _buildLayerContent(ScrollController? scrollController) {
     if (_loadingCaps) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -998,6 +999,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onStudyToggled: _toggleStudy,
       onLayerToggled: _toggleLayer,
       onZoomTo: _zoomTo,
+      scrollController: scrollController,
     );
   }
 }
