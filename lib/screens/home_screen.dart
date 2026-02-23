@@ -805,7 +805,7 @@ class _HomeScreenState extends State<HomeScreen> {
               TileLayer(
                 key: ValueKey('${_basemap}_$_cameraSettleCount'),
                 urlTemplate: _basemap.urlTemplate,
-                userAgentPackageName: 'au.gov.vic.wcma.wfmc',
+                userAgentPackageName: 'au.gov.vic.wcma.wfm',
               ),
               if (activeLayers.isNotEmpty)
                 TileLayer(

@@ -1,4 +1,4 @@
-package au.gov.vic.wcma.wfmc.wfmc
+package au.gov.vic.wcma.wfm
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,0 +1,35 @@
+====== GOOGLE PLAY STORE LISTING ======
+
+APP NAME (30 chars max):
+Wimmera Flood Maps
+
+SHORT DESCRIPTION (80 chars max):
+View flood depth maps for the Wimmera region from Wimmera CMA.
+
+FULL DESCRIPTION:
+Wimmera Flood Maps gives you instant access to flood depth information across the Wimmera catchment in western Victoria, Australia.
+
+Built by the Wimmera Catchment Management Authority (Wimmera CMA), this app displays flood depth data from completed flood investigations covering creeks, rivers and waterways throughout the region. View 1% AEP (1-in-100 year) flood depth maps to understand flood risk for any area within the Wimmera catchment.
+
+Key features:
+
+- Browse flood studies from across the Wimmera region including Horsham, Stawell, Ararat, Dimboola, Nhill and surrounding areas
+- View detailed flood depth layers overlaid on a map with colour-coded depth ranges
+- Toggle individual flood studies and layers on and off
+- Zoom to specific flood study areas
+- Use your device GPS to locate yourself on the map
+- Search for any address or location within the region
+- Share your current map view with others
+- Choose between different basemap styles
+- Cached data for faster loading on return visits
+
+This app uses flood investigation data published by Wimmera CMA as part of its floodplain management responsibilities under the Water Act 1989 (Victoria). The flood depth maps show modelled flood depths for design flood events and are intended for general information purposes.
+
+For official flood advice for a specific property, contact Wimmera CMA directly:
+Phone: (03) 5382 1544
+Email: wcma@wcma.vic.gov.au
+Web: https://wcma.vic.gov.au
+
+CATEGORY: Maps & Navigation
+
+PRIVACY POLICY URL: https://arifwcma.github.io/wfmc/privacy-policy.html
