@@ -83,7 +83,8 @@ class _HomeScreenState extends State<HomeScreen> {
   LatLng? _userLocation;
   bool _locating = false;
   double _sheetPixelHeight = 0;
-  bool _cameraSettled = false;
+  int _cameraSettleCount = 0;
+  bool _showHint = true;
 
   // ---- Lifecycle ---------------------------------------------------------
 
@@ -149,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(32),
           ),
         );
-        if (mounted) setState(() => _cameraSettled = true);
+        if (mounted) setState(() => _cameraSettleCount++);
       });
     }
   }
@@ -183,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _caps = caps;
         _studies = studies;
         _layerToStudy = layerToStudy;
+        _cameraSettleCount++;
         if (_enabledStudies.isEmpty) {
           _enabledStudies = Set<String>.from(AppConfig.defaultEnabledStudies);
         }
@@ -730,7 +732,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Wimmera Flood Maps'),
+        title: Text(
+          'Wimmera Flood Maps',
+          style: TextStyle(
+            fontSize: MediaQuery.sizeOf(context).width < 400 ? 16 : 20,
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: 'Search location',
@@ -792,22 +799,17 @@ class _HomeScreenState extends State<HomeScreen> {
               onMapReady: () {
                 _mapReady = true;
                 _zoomToBoundary();
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && !_cameraSettled) {
-                    setState(() => _cameraSettled = true);
-                  }
-                });
               },
             ),
             children: [
               TileLayer(
-                key: ValueKey('${_basemap}_$_cameraSettled'),
+                key: ValueKey('${_basemap}_$_cameraSettleCount'),
                 urlTemplate: _basemap.urlTemplate,
                 userAgentPackageName: 'au.gov.vic.wcma.wfmc',
               ),
               if (activeLayers.isNotEmpty)
                 TileLayer(
-                  key: ValueKey('${activeLayers.join(",")}_$_cameraSettled'),
+                  key: ValueKey('${activeLayers.join(",")}_$_cameraSettleCount'),
                   tileProvider: WmsTileProvider(
                     httpClient: _httpClient,
                     baseEndpoint: _baseEndpointUri,
@@ -895,22 +897,47 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           // Locate me button
           Positioned(
-            right: 16,
-            bottom: _sheetPixelHeight + 12,
-            child: FloatingActionButton(
-              heroTag: 'locate',
+            right: 12,
+            bottom: _sheetPixelHeight + (_showHint ? 52 : 8),
+            child: ElevatedButton.icon(
               onPressed: _locating ? null : _locateMe,
-              tooltip: 'Locate me',
-              child: _locating
+              icon: _locating
                   ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.my_location),
+                  : const Icon(Icons.my_location, size: 18),
+              label: Text(
+                'Show my location',
+                style: TextStyle(
+                  fontSize: MediaQuery.sizeOf(context).width < 400 ? 11 : 13,
+                ),
+              ),
             ),
           ),
+          // First-use hint
+          if (_showHint)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: _sheetPixelHeight + 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.75),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Select the flood map you would like to view from the list below',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: MediaQuery.sizeOf(context).width < 400 ? 12 : 14,
+                  ),
+                ),
+              ),
+            ),
           // Persistent layers sheet
           _buildPersistentSheet(),
         ],
@@ -929,8 +956,11 @@ class _HomeScreenState extends State<HomeScreen> {
       onNotification: (notification) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            setState(() => _sheetPixelHeight =
-                notification.extent * MediaQuery.sizeOf(context).height);
+            setState(() {
+              _sheetPixelHeight =
+                  notification.extent * MediaQuery.sizeOf(context).height;
+              _showHint = false;
+            });
           }
         });
         return false;
