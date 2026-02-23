@@ -44,6 +44,7 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
   path_provider: ^2.1.5
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +61,15 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
+flutter_native_splash:
+  color: "#c4daf2"
+  image: assets/app_icon_512.png
+  fullscreen: false
+  android_12:
+    color: "#c4daf2"
+    image: assets/app_icon_512.png
+    icon_background_color: "#c4daf2"
+
 flutter:
   uses-material-design: true
 
