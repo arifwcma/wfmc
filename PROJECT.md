@@ -1,4 +1,4 @@
-# WFMC — Wimmera Flood Map Client
+# WFMC — Wimmera Flood Maps Client
 
 ## Purpose
 WFMC is a **read-only** Flutter app (iOS / Android / Web) for viewing Wimmera flood maps served from the QGIS Server project in `wfma/wfma.qgs`.

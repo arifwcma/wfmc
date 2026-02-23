@@ -1,11 +1,11 @@
 {
-    "name": "Wimmera Flood Map",
+    "name": "Wimmera Flood Maps",
     "short_name": "WFM",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Wimmera Flood Map",
+    "description": "Wimmera Flood Maps",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

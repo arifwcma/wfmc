@@ -730,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Wimmera Flood Map'),
+        title: const Text('Wimmera Flood Maps'),
         actions: [
           IconButton(
             tooltip: 'Search location',
