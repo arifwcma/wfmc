@@ -81,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
   BasemapType _basemap = BasemapType.cartographic;
 
   LatLng? _userLocation;
+  LatLng? _tappedLocation;
   bool _locating = false;
   double _sheetPixelHeight = 0;
   int _cameraSettleCount = 0;
@@ -294,6 +295,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---- Feature info (reworked) -------------------------------------------
 
   Future<void> _identify(TapPosition tapPosition, LatLng latLng) async {
+    setState(() => _tappedLocation = latLng);
+
     final active = _activeLayers;
     if (active.isEmpty) return;
 
@@ -714,6 +717,7 @@ class _HomeScreenState extends State<HomeScreen> {
       delegate: PlaceSearchDelegate(geocodingService: _geocodingService),
     );
     if (location != null) {
+      setState(() => _tappedLocation = location);
       _mapController.move(location, 14);
     }
   }
@@ -832,6 +836,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           ))
                       .toList(),
                 ),
+              if (_tappedLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _tappedLocation!,
+                      width: 30,
+                      height: 40,
+                      alignment: Alignment.topCenter,
+                      child: const Icon(
+                        Icons.location_pin,
+                        color: Colors.red,
+                        size: 40,
+                      ),
+                    ),
+                  ],
+                ),
               if (_userLocation != null)
                 MarkerLayer(
                   markers: [
@@ -948,7 +968,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---- Persistent layers sheet (UI1) --------------------------------------
 
   static const double _sheetInitial = 0.25;
-  static const double _sheetMin = 0.05;
+  static const double _sheetMin = 0.10;
   static const double _sheetMax = 0.70;
 
   Widget _buildPersistentSheet() {
@@ -970,7 +990,7 @@ class _HomeScreenState extends State<HomeScreen> {
         minChildSize: _sheetMin,
         maxChildSize: _sheetMax,
         snap: true,
-        snapSizes: const [_sheetMin, _sheetInitial, 0.45],
+        snapSizes: const [_sheetInitial, 0.45],
         builder: (ctx, scrollController) {
           return Container(
             clipBehavior: Clip.antiAlias,
