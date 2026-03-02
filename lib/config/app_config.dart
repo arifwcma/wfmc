@@ -22,6 +22,7 @@ class AppConfig {
     'Stawell_2024',
     'UpperWimmera_2014',
     'WarracknabealBrim_2016',
+    'LowerWimmera_2016',
     'WimmeraRiverYarriambiackCreek_2010',
   };
 
