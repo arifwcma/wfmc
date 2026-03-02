@@ -81,6 +81,13 @@ class StudyMetadata {
           'https://wcma.vic.gov.au/wp-content/uploads/2022/05/flood-investigation-warracknabeal-and-brim.pdf',
       layers100yr: const ['WaBr15Dep100'],
     ),
+    'LowerWimmera_2016': StudyInfo(
+      displayName: 'Lower Wimmera',
+      completionYear: 2016,
+      reportUrl:
+          'https://wcma.vic.gov.au/wp-content/uploads/2022/05/3795-01_r02final_hydrology.pdf',
+      layers100yr: const ['Wimm16RvDepthARI100'],
+    ),
     'WimmeraRiverYarriambiackCreek_2010': StudyInfo(
       displayName: 'Wimmera River Yarriambiack Creek',
       completionYear: 2010,

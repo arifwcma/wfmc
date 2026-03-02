@@ -37,6 +37,7 @@ class AppConfig {
     'StawellG24RvDepthARI100',
     'UW_E01_100y_052_D_Max_g007_50',
     'WaBr15Dep100',
+    'Wimm16RvDepthARI100',
     'l_100y_existing_flood_depths',
   };
 }
