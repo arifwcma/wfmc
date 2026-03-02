@@ -2,9 +2,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 class LocationService {
-  /// Returns the user's current position, or `null` if unavailable.
-  ///
-  /// Handles permission requests automatically.
   Future<LatLng?> getCurrentLocation() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return null;

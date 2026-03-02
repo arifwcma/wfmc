@@ -1,5 +1,3 @@
-/// Metadata for each flood study area.
-///
 class StudyInfo {
   const StudyInfo({
     required this.displayName,

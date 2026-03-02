@@ -13,10 +13,6 @@ export 'tile_cache.dart' show TileCache;
 
 final _requestPool = Pool(4);
 
-// ---------------------------------------------------------------------------
-// WMS tile provider
-// ---------------------------------------------------------------------------
-
 class WmsTileProvider extends TileProvider {
   WmsTileProvider({
     required this.httpClient,
@@ -80,10 +76,6 @@ class WmsTileProvider extends TileProvider {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Image provider with disk caching and offline fallback
-// ---------------------------------------------------------------------------
-
 @immutable
 class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
   const WmsNetworkImage({required this.url, required this.httpClient});
@@ -122,12 +114,10 @@ class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
         if (bytes.isEmpty) {
           throw Exception('Tile fetch returned empty body');
         }
-        // Cache to disk (fire-and-forget).
         TileCache.putFile(cacheKey, bytes);
         final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
         return decode(buffer);
       } catch (e, st) {
-        // Offline fallback: try the cached version.
         final cached = TileCache.getFile(cacheKey);
         if (cached != null) {
           debugPrint('WMS tile: serving from cache ($cacheKey)');

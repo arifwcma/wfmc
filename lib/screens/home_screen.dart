@@ -24,10 +24,6 @@ import '../utils/epsg_utils.dart';
 import '../widgets/place_search_delegate.dart';
 import '../widgets/study_list.dart';
 
-// ---------------------------------------------------------------------------
-// Helper: parsed result from GetFeatureInfo
-// ---------------------------------------------------------------------------
-
 class _IdentifyResult {
   const _IdentifyResult({
     required this.layerName,
@@ -42,10 +38,6 @@ class _IdentifyResult {
   final double? depth;
 }
 
-// ---------------------------------------------------------------------------
-// Home screen
-// ---------------------------------------------------------------------------
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.prefs});
 
@@ -56,7 +48,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ---- Services ----------------------------------------------------------
   late final http.Client _httpClient;
   late final SettingsStore _settings;
   late final WmsCapabilitiesService _capsService;
@@ -67,8 +58,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final LocationService _locationService = LocationService();
   final MapController _mapController = MapController();
 
-  // ---- State -------------------------------------------------------------
-  WmsCapabilities? _caps;
   List<WmsLayer> _studies = [];
   Map<String, String> _layerToStudy = {};
   Object? _capsError;
@@ -86,8 +75,6 @@ class _HomeScreenState extends State<HomeScreen> {
   double _sheetPixelHeight = 0;
   int _cameraSettleCount = 0;
   bool _showHint = true;
-
-  // ---- Lifecycle ---------------------------------------------------------
 
   @override
   void initState() {
@@ -112,8 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ---- Getters -----------------------------------------------------------
-
   Uri get _baseEndpointUri => Uri.parse(_settings.baseEndpoint);
   String get _mapPath => _settings.mapPath;
 
@@ -130,8 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   bool get _hasActiveLayers => _activeLayers.isNotEmpty;
-
-  // ---- Data loading ------------------------------------------------------
 
   Future<void> _loadBoundary() async {
     await _boundaryService.load();
@@ -182,7 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() {
-        _caps = caps;
         _studies = studies;
         _layerToStudy = layerToStudy;
         _cameraSettleCount++;
@@ -217,8 +199,6 @@ class _HomeScreenState extends State<HomeScreen> {
     findDepth(root);
     return depthGroup?.children ?? [];
   }
-
-  // ---- Layer management --------------------------------------------------
 
   void _toggleStudy(String studyName, bool enabled) {
     final newSet = Set<String>.from(_enabledStudies);
@@ -292,8 +272,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---- Feature info (reworked) -------------------------------------------
-
   Future<void> _identify(TapPosition tapPosition, LatLng latLng) async {
     setState(() => _tappedLocation = latLng);
 
@@ -341,7 +319,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Parse each feature into a structured result.
       final results = <_IdentifyResult>[];
       for (final feature in features) {
         final id = feature['id'] as String? ?? '';
@@ -389,7 +366,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _showIdentifyResults(
       List<_IdentifyResult> results, LatLng latLng) async {
-    // Group results by study so report link appears once per study.
     final grouped = <String, List<_IdentifyResult>>{};
     final ungrouped = <_IdentifyResult>[];
     for (final r in results) {
@@ -500,8 +476,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---- Location (Locate Me) ---------------------------------------------
-
   Future<void> _locateMe() async {
     setState(() => _locating = true);
     try {
@@ -566,8 +540,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final dLng = a.longitude - b.longitude;
     return dLat * dLat + dLng * dLng;
   }
-
-  // ---- Bookmarks ---------------------------------------------------------
 
   Future<void> _saveBookmark(LatLng location) async {
     final controller = TextEditingController();
@@ -697,8 +669,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---- Share -------------------------------------------------------------
-
   void _shareView() {
     final center = _mapController.camera.center;
     final zoom = _mapController.camera.zoom.toStringAsFixed(1);
@@ -708,8 +678,6 @@ class _HomeScreenState extends State<HomeScreen> {
         'https://www.google.com/maps/@${center.latitude},${center.longitude},${zoom}z';
     Share.share(text);
   }
-
-  // ---- Search ------------------------------------------------------------
 
   Future<void> _openSearch() async {
     final location = await showSearch<LatLng?>(
@@ -721,8 +689,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _mapController.move(location, 14);
     }
   }
-
-  // ---- Build -------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -875,7 +841,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          // Legend card
           if (_hasActiveLayers)
             Positioned(
               top: 12,
@@ -888,7 +853,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          // Identifying overlay
           if (_identifying)
             Positioned.fill(
               child: ColoredBox(
@@ -915,7 +879,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          // Locate me button
           Positioned(
             right: 12,
             bottom: _sheetPixelHeight + (_showHint ? 52 : 8),
@@ -936,7 +899,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // First-use hint
           if (_showHint)
             Positioned(
               left: 16,
@@ -945,7 +907,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.75),
+                  color: Colors.black.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -958,14 +920,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          // Persistent layers sheet
           _buildPersistentSheet(),
         ],
       ),
     );
   }
-
-  // ---- Persistent layers sheet (UI1) --------------------------------------
 
   static const double _sheetInitial = 0.25;
   static const double _sheetMin = 0.10;
@@ -995,7 +954,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.58),
+              color: Colors.white.withValues(alpha: 0.58),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
               boxShadow: const [

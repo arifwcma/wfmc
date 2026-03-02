@@ -18,7 +18,6 @@ class GeocodingService {
 
   final http.Client httpClient;
 
-  /// Wimmera-region bounding box for Nominatim search bias.
   static const _viewbox = '141.0,-37.5,144.0,-35.5';
 
   Future<List<GeocodingResult>> search(String query) async {

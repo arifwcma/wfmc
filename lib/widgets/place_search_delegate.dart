@@ -5,7 +5,6 @@ import 'package:latlong2/latlong.dart';
 
 import '../services/geocoding_service.dart';
 
-/// Search delegate for address / place-name search (Nominatim).
 class PlaceSearchDelegate extends SearchDelegate<LatLng?> {
   PlaceSearchDelegate({required this.geocodingService});
 
@@ -53,10 +52,6 @@ class PlaceSearchDelegate extends SearchDelegate<LatLng?> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Stateful widget that debounces Nominatim requests internally
-// ---------------------------------------------------------------------------
 
 class _SuggestionList extends StatefulWidget {
   const _SuggestionList({

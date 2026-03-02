@@ -10,7 +10,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
 
-  // Initialise on-disk tile cache (mobile / desktop only).
   if (!kIsWeb) {
     final cacheDir = await getTemporaryDirectory();
     TileCache.initialize('${cacheDir.path}/wms_tiles');

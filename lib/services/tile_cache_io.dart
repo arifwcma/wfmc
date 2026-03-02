@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-/// Native tile cache — stores WMS tiles on disk for offline fallback.
 class TileCache {
   static String? _basePath;
 
@@ -10,7 +9,6 @@ class TileCache {
     Directory(basePath).createSync(recursive: true);
   }
 
-  /// Deterministic hash key for a URL (FNV-1a 32-bit).
   static String keyFor(Uri url) {
     final input = url.toString();
     int hash = 0x811c9dc5;

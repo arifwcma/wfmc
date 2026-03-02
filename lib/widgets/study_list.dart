@@ -33,7 +33,6 @@ class _StudyListState extends State<StudyList> {
   @override
   void initState() {
     super.initState();
-    // Start collapsed for fast drawer rendering.
   }
 
   String _studyDisplayName(String studyName) {
@@ -49,7 +48,6 @@ class _StudyListState extends State<StudyList> {
     return CustomScrollView(
       controller: widget.scrollController,
       slivers: [
-        // Drag handle
         SliverToBoxAdapter(
           child: Center(
             child: Container(
@@ -63,7 +61,6 @@ class _StudyListState extends State<StudyList> {
             ),
           ),
         ),
-        // Study items
         SliverList.builder(
           itemCount: widget.studies.length,
           itemBuilder: (context, index) {

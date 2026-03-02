@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-/// Web stub — no tile caching (browser handles its own HTTP cache).
 class TileCache {
   static void initialize(String basePath) {}
 
