@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xml/xml.dart';
 
 import '../models/wms_models.dart';
+import '../utils/wms_uri.dart';
 
 class WmsCapabilitiesService {
   WmsCapabilitiesService({
@@ -15,8 +16,8 @@ class WmsCapabilitiesService {
   final http.Client httpClient;
   final SharedPreferences prefs;
 
-  static const _prefsCapabilitiesXmlKey = 'wms.capabilitiesXml.v2';
-  static const _prefsCapabilitiesFetchedAtKey = 'wms.capabilitiesFetchedAtEpochMs.v2';
+  static const _prefsCapabilitiesXmlKey = 'wms.capabilitiesXml.v3';
+  static const _prefsCapabilitiesFetchedAtKey = 'wms.capabilitiesFetchedAtEpochMs.v3';
 
   int? get cachedFetchedAtEpochMs => prefs.getInt(_prefsCapabilitiesFetchedAtKey);
 
@@ -123,12 +124,14 @@ class WmsCapabilitiesService {
     required Uri baseEndpoint,
     required String mapPath,
   }) {
-    final params = <String, String>{
-      'MAP': mapPath,
-      'SERVICE': 'WMS',
-      'REQUEST': 'GetCapabilities',
-    };
-    return baseEndpoint.replace(queryParameters: params);
+    return buildWmsUri(
+      base: baseEndpoint,
+      params: {
+        'MAP': mapPath,
+        'SERVICE': 'WMS',
+        'REQUEST': 'GetCapabilities',
+      },
+    );
   }
 
   static Uri buildLegendUri({
@@ -137,17 +140,19 @@ class WmsCapabilitiesService {
     required String layerName,
     String style = 'default',
   }) {
-    final params = <String, String>{
-      'MAP': mapPath,
-      'SERVICE': 'WMS',
-      'VERSION': '1.3.0',
-      'REQUEST': 'GetLegendGraphic',
-      'LAYER': layerName,
-      'FORMAT': 'image/png',
-      'STYLE': style,
-      'SLD_VERSION': '1.1.0',
-    };
-    return baseEndpoint.replace(queryParameters: params);
+    return buildWmsUri(
+      base: baseEndpoint,
+      params: {
+        'MAP': mapPath,
+        'SERVICE': 'WMS',
+        'VERSION': '1.3.0',
+        'REQUEST': 'GetLegendGraphic',
+        'LAYER': layerName,
+        'FORMAT': 'image/png',
+        'STYLE': style,
+        'SLD_VERSION': '1.1.0',
+      },
+    );
   }
 
   static String prettyPrintXml(String xmlString) {

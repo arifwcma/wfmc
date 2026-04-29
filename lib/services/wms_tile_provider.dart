@@ -7,11 +7,34 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:pool/pool.dart';
 
+import '../utils/wms_uri.dart';
 import 'tile_cache.dart';
 
 export 'tile_cache.dart' show TileCache;
 
-final _requestPool = Pool(4);
+final _requestPool = Pool(2);
+final _jitterRng = math.Random();
+
+const _retryStatusCodes = <int>{429, 502, 503, 504};
+const _retryBackoffs = <Duration>[
+  Duration(milliseconds: 800),
+  Duration(milliseconds: 2000),
+  Duration(milliseconds: 4500),
+];
+
+Duration _jittered(Duration base) {
+  final factor = 0.75 + _jitterRng.nextDouble() * 0.5;
+  return Duration(milliseconds: (base.inMilliseconds * factor).round());
+}
+
+String _bodyExcerpt(List<int> bytes, {int max = 240}) {
+  try {
+    final text = String.fromCharCodes(bytes.take(max));
+    return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  } catch (_) {
+    return '<${bytes.length} bytes, non-text>';
+  }
+}
 
 class WmsTileProvider extends TileProvider {
   WmsTileProvider({
@@ -30,7 +53,7 @@ class WmsTileProvider extends TileProvider {
   final String imageFormat;
   final bool transparent;
 
-  static const int tileSizePx = 256;
+  static const int tileSizePx = 512;
   static const double earthRadius = 6378137.0;
   static final double originShift = 2 * math.pi * earthRadius / 2.0;
   static final double initialResolution =
@@ -72,7 +95,7 @@ class WmsTileProvider extends TileProvider {
       'BBOX': bbox,
     };
 
-    return baseEndpoint.replace(queryParameters: params);
+    return buildWmsUri(base: baseEndpoint, params: params);
   }
 }
 
@@ -106,14 +129,7 @@ class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
       final cacheKey = TileCache.keyFor(key.url);
 
       try {
-        final res = await httpClient.get(key.url);
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          throw Exception('Tile fetch failed: HTTP ${res.statusCode}');
-        }
-        final bytes = res.bodyBytes;
-        if (bytes.isEmpty) {
-          throw Exception('Tile fetch returned empty body');
-        }
+        final bytes = await _fetchWithRetry(key.url);
         TileCache.putFile(cacheKey, bytes);
         final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
         return decode(buffer);
@@ -129,6 +145,30 @@ class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
         rethrow;
       }
     });
+  }
+
+  Future<Uint8List> _fetchWithRetry(Uri url) async {
+    int attempt = 0;
+    while (true) {
+      final res = await httpClient.get(url);
+      final shouldRetry = _retryStatusCodes.contains(res.statusCode) &&
+          attempt < _retryBackoffs.length;
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        if (res.bodyBytes.isEmpty) {
+          throw Exception('Tile fetch returned empty body');
+        }
+        return res.bodyBytes;
+      }
+      if (!shouldRetry) {
+        final excerpt = _bodyExcerpt(res.bodyBytes);
+        debugPrint(
+          'WMS tile HTTP ${res.statusCode} (no retry) for $url\n  body: $excerpt',
+        );
+        throw Exception('Tile fetch failed: HTTP ${res.statusCode}');
+      }
+      await Future<void>.delayed(_jittered(_retryBackoffs[attempt]));
+      attempt++;
+    }
   }
 
   @override

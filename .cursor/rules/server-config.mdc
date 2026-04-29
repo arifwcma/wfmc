@@ -1,0 +1,177 @@
+# Production Server (EC2) — Dockerised
+
+## Instance
+
+| Property | Value |
+|---|---|
+| Provider | AWS EC2 |
+| Public IP | `16.176.28.146` |
+| Private IP | `172.31.18.107` |
+| Hostname | `ip-172-31-18-107` |
+| OS | Ubuntu (login user `ubuntu`; data lives under `/home/ssm-user/apps/`) |
+| Mem | 3.7 GiB total, ~1.5 GiB free at idle |
+| Disk | 38 GB root, 17 GB used |
+
+## Access
+
+```powershell
+ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@16.176.28.146
+```
+
+- SSH user: `ubuntu` (read host config; needs `sudo` for files under `/home/ssm-user/apps/`).
+- App/data owner: `ssm-user` (AWS SSM Session Manager default user). All compose roots, nginx configs, QGIS projects, plugins live under `/home/ssm-user/apps/`.
+- Docker: invoked as `ssm-user` (or via `sudo` from `ubuntu`). Compose roots are subdirs of `/home/ssm-user/apps/`.
+
+## Architecture
+
+```
+Internet
+  │  HTTPS 443 / HTTP 80   (host-bound by nginx-reverse-proxy, with HTTP/2)
+  ▼
+nginx-reverse-proxy (nginx:1.28-alpine, ports 80/443)
+  │  routes by Host header; unknown hosts on :80 return 444
+  ├─ wcma.work          ──► mapnj2:3001       (Next.js)
+  ├─ xyz.wcma.work      ──► xyz:3002          (Next.js XYZ tile server)
+  ├─ pozi.wcma.work     ──► qgis-server:80    (WMS — what the Flutter app uses)
+  ├─ parcels.wcma.work  ──► qgis-server:80    (WMS, MAP-pinned to wimmera_parcels.qgz)
+  └─ wfml.wcma.work     ──► /ows/ → qgis-server:80
+                          ──► /     → lizmap-nginx:80 → lizmap (PHP-FPM)
+```
+
+All containers share the `internal-apps` Docker network (the reverse-proxy container also joins `reverse-proxy_default` to expose host ports).
+
+## Containers (live)
+
+| Container | Image | Internal ports | Purpose |
+|---|---|---|---|
+| `nginx-reverse-proxy` | `nginx:1.28-alpine` | 80, 443 (host-bound) | TLS termination + Host-based routing |
+| `qgis-server` | `qgis/qgis-server:ltr` | 80, 9993 | xvfb + nginx + spawn-fcgi → `qgis_mapserv.fcgi` |
+| `lizmap-nginx` | `nginx:1.28-alpine` | 80 | Front for Lizmap PHP app |
+| `lizmap` | `3liz/lizmap-web-client:3.9` | (PHP-FPM) | Lizmap Web Client |
+| `mapnj2` | `mapnj2-mapnj2` (local) | 3001 | Next.js app |
+| `xyz` | `xyz-xyz` (local) | 3002 | Next.js XYZ tile server |
+
+## Host paths (bind-mounts)
+
+### Reverse proxy
+- Compose root: `/home/ssm-user/apps/reverse-proxy/`
+- Nginx main config: `/home/ssm-user/apps/reverse-proxy/nginx/nginx.conf`
+- Vhosts: `/home/ssm-user/apps/reverse-proxy/nginx/conf.d/*.conf`
+- Let's Encrypt certs: `/home/ssm-user/apps/reverse-proxy/certbot/conf/` (mounted at `/etc/letsencrypt`)
+- ACME webroot: `/home/ssm-user/apps/reverse-proxy/certbot/www/`
+
+### QGIS Server
+- Compose root: `/home/ssm-user/apps/qgis-server/`
+- Internal nginx config (mounted into container at `/etc/nginx/nginx.conf`):
+  `/home/ssm-user/apps/qgis-server/nginx/nginx.conf`
+- QGIS projects (mounted at `/var/www/qgis_projects` in container):
+  `/home/ssm-user/apps/qgis-server/projects/`
+  - `pozi_base/pozi_base.qgs` is the live project for `pozi.wcma.work`
+- QGIS Server plugins (mounted at `/opt/qgis-server/plugins`):
+  `/home/ssm-user/apps/qgis-server/plugins/`
+- Misc data (mounted at `/data`):
+  `/home/ssm-user/apps/qgis-server/data/`
+
+### Lizmap
+- Compose root: `/home/ssm-user/apps/lizmap/`
+- Lizmap nginx vhost: `/home/ssm-user/apps/lizmap/nginx/lizmap.conf` → container `/etc/nginx/conf.d/default.conf`
+- Lizmap web root: `/home/ssm-user/apps/lizmap/www/`
+- Lizmap var (config + db): `/home/ssm-user/apps/lizmap/var/`
+- Shares the QGIS projects mount with `qgis-server` (read access at `/var/www/qgis_projects`)
+
+### Mapnj2 / XYZ
+- Compose roots: `/home/ssm-user/apps/mapnj2/`, `/home/ssm-user/apps/xyz/`
+- Shared GEE service-account secret: `/home/ssm-user/secrets/mapnj2/service-account.json`
+
+## Public domain map
+
+All vhosts are defined in a single file: `/home/ssm-user/apps/reverse-proxy/nginx/conf.d/default.conf`.
+
+| Domain | Container chain | Notes |
+|---|---|---|
+| `wcma.work` | reverse-proxy → `mapnj2:3001` | Next.js app; `general` rate limit. |
+| `xyz.wcma.work` | reverse-proxy → `xyz:3002` | Next.js XYZ tile server (no rate limit). |
+| `parcels.wcma.work` | reverse-proxy → `qgis-server:80` | Hard-pinned `MAP=/var/www/qgis_projects/wimmera_parcels/wimmera_parcels.qgz`; non-matching `MAP` returns `403`. |
+| `wfml.wcma.work` | reverse-proxy → `qgis-server:80` (`/ows/`) + `lizmap-nginx:80` (`/`) | Lizmap front; `MAP` whitelisted to `^/var/www/qgis_projects/wfml/`. |
+| `pozi.wcma.work` | reverse-proxy → `qgis-server:80` | WMS endpoint at `/ows/?MAP=/var/www/qgis_projects/pozi_base/pozi_base.qgs`. **This is what the Flutter app talks to.** Hard-pinned via `if ($arg_MAP != "..."){ return 403; }`. |
+
+## QGIS Server container internals
+
+- Image: official `qgis/qgis-server:ltr`
+- Entrypoint: `/usr/local/bin/start-xvfb-nginx.sh`
+  - Starts Xvfb (`:99`, screen 0, 1280x1024x16, +GLX +render)
+  - Starts `spawn-fcgi` to launch `qgis_mapserv.fcgi` listening on `127.0.0.1:9993` (single FCGI process by default)
+  - Starts internal nginx (master + 2 workers) listening on container port 80
+- FCGI binary inside container: `/usr/lib/cgi-bin/qgis_mapserv.fcgi` (runs as `www-data`)
+- Internal nginx config (host: `/home/ssm-user/apps/qgis-server/nginx/nginx.conf`) routes:
+  - `/ows/...`  →  `rewrite /qgis/qgis_mapserv.fcgi`  →  `fastcgi_pass localhost:9993`
+  - `/ogc/<repo>/`  →  `rewrite /qgis/qgis_mapserv.fcgi?map=/io/data/<repo>/<repo>.qgs`
+  - `/wfs3/...`  →  `rewrite /qgis/qgis_mapserv.fcgi`
+- FastCGI params include `SCRIPT_FILENAME`, `QUERY_STRING`, plus computed `HTTPS`, `SERVER_NAME`, `SERVER_PORT` derived from `X-Forwarded-*` headers (so the reverse-proxy must pass those).
+
+### QGIS Server env vars (live)
+
+```
+QGIS_PREFIX_PATH=/usr
+QGIS_PLUGINPATH=/opt/qgis-server/plugins
+QGIS_AUTH_DB_DIR_PATH=/tmp/
+QGIS_SERVER_PARALLEL_RENDERING=true
+QGIS_SERVER_MAX_THREADS=2
+QGIS_SERVER_LOG_LEVEL=2
+QGIS_SERVER_LOG_STDERR=true
+QGIS_SERVER_LIZMAP_REVEAL_SETTINGS=true
+HOME=/var/lib/qgis
+```
+
+- Only **one** `qgis_mapserv.fcgi` process runs by default — but it does parallel rendering with up to `QGIS_SERVER_MAX_THREADS` threads. Increasing throughput requires either bumping FCGI process count (extra `spawn-fcgi -F N` flag) or raising `QGIS_SERVER_MAX_THREADS`. Note: per-tile multi-layer requests serialize on a single FCGI worker.
+- The qgis-server container also exposes port 9993 (the FCGI socket) but that's an internal artefact of the image; only port 80 is consumed by the reverse-proxy.
+
+## Reverse-proxy nginx — rate limiting
+
+Three `limit_req` zones are **defined** in `/home/ssm-user/apps/reverse-proxy/nginx/nginx.conf`:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=general:10m rate=60r/s;
+limit_req_zone $binary_remote_addr zone=qgis:10m    rate=20r/m;   # ← typo for r/s — too tight for WMS clients
+limit_req_zone $binary_remote_addr zone=tiles:10m   rate=30r/s;   # ← defined but not applied to any vhost
+```
+
+**Status (2026-04-29): all `limit_req zone=qgis ...` directives are commented out** in `conf.d/default.conf` (lines 38, 58, 87, 156, 180, 213 — `parcels`, `wfml`, `pozi` `/ows/` blocks for both :80 and :443). This was the cause of `HTTP 503` from the Flutter app (`limiting requests, excess: X.X by zone "qgis", server: pozi.wcma.work` in the reverse-proxy error log). With the directives disabled, 30-parallel-request hammer tests now return 30/30 `200`.
+
+Backup before edit: `/home/ssm-user/apps/reverse-proxy/nginx/conf.d/default.conf.bak.20260429` (root-owned).
+
+When/if rate-limiting is re-introduced for `pozi.wcma.work`, target `rate=15r/s burst=60 nodelay` (or move it to the existing `tiles` zone). The `general` zone (`60r/s burst=100 nodelay`) and the `parcels.wcma.work` `cgi-bin` location remain unchanged otherwise.
+
+The conf.d directory and `nginx.conf` are owned by `ssm-user`; reading from the `ubuntu` SSH user requires `sudo`.
+
+## SSL / TLS
+
+- All `:443` listeners use HTTP/2 and a single Let's Encrypt cert: `/etc/letsencrypt/live/wcma.work-0001/fullchain.pem` (+ `privkey.pem`). It's a SAN cert covering all four `*.wcma.work` vhosts.
+- `:80 default_server` returns `444` (drop) for unknown hosts.
+- ACME webroot mounted at `/home/ssm-user/apps/reverse-proxy/certbot/www/` (host) → standard Certbot HTTP-01 flow inside the reverse-proxy container.
+- Pure TLS termination — does not influence upstream `4xx`/`5xx`.
+
+## Observed quirks
+
+- QGIS Server logs many `QFont::fromString: Invalid description '(empty)'` warnings — cosmetic, can be ignored.
+- Some `GetMap` requests with the full default-on layer set return HTTP 400 (`270`-byte body) intermittently — likely a single layer in the project being temporarily unavailable. Investigate per-layer with isolated requests if it recurs.
+- The qgis-server's internal nginx access log shows the **reverse-proxy's** internal Docker IP as the client (e.g. `172.19.0.5`), not the real user IP, because the reverse-proxy isn't passing through `X-Forwarded-For` to the access log format used inside the container.
+
+## Operational notes
+
+- No QGIS-related systemd unit on the host — everything is container-managed.
+- No Apache on host — earlier `qgis_mapserv.fcgi` PIDs visible to `ps` are inside the `qgis-server` container, surfaced because Docker shares the host PID namespace via `ps`.
+- No host nginx — the only nginx instances are inside containers (`nginx-reverse-proxy`, `qgis-server`, `lizmap-nginx`).
+- Login user is `ubuntu`; everything in `/home/ssm-user/apps/` is owned by the `ssm-user` account (the SSM Session Manager default user). Use `sudo` to read those files when SSHed as `ubuntu`.
+
+## Client expectations (Flutter app)
+
+Pinned here so any server-side change keeps these in mind:
+
+- Tile size: **512×512 PNG** (`WIDTH=512&HEIGHT=512`). One screen of map ≈ 4–9 tiles instead of 16–25.
+- Concurrency: **2 in-flight WMS requests** per device (client-side `Pool`).
+- Retry policy: 4 attempts on `{429, 502, 503, 504}` with jittered backoffs `~800ms / 2s / 4.5s` (±25%).
+- Tile cache: persistent on-device disk cache; failed fetch falls back to last-good cached tile when available.
+- WMS `MAP` parameter must contain a literal `/` (the app deliberately un-encodes `%2F` after `Uri.encodeQueryComponent`). The reverse-proxy / WAF must not block paths or query strings containing `/`.
+
+So a sustainable rate-limit budget for one user moving the map should comfortably fit inside e.g. **`rate=15r/s burst=60 nodelay`** on the `qgis` zone.

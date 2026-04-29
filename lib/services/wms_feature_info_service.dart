@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../utils/wms_uri.dart';
+
 class WmsFeatureInfoService {
   WmsFeatureInfoService({required this.httpClient});
 
@@ -41,7 +43,7 @@ class WmsFeatureInfoService {
       'FEATURE_COUNT': '10',
     };
 
-    final uri = baseEndpoint.replace(queryParameters: params);
+    final uri = buildWmsUri(base: baseEndpoint, params: params);
     final res = await httpClient.get(uri);
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('GetFeatureInfo failed: HTTP ${res.statusCode}');

@@ -67,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _identifying = false;
   bool _mapReady = false;
   bool _defaultsApplied = false;
+  bool _initialFitDone = false;
 
   Set<String> _enabledStudies = <String>{};
   Set<String> _enabledLayers = <String>{};
@@ -152,7 +153,12 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(32),
           ),
         );
-        if (mounted) setState(() => _cameraSettleCount++);
+        if (mounted) {
+          setState(() {
+            _cameraSettleCount++;
+            _initialFitDone = true;
+          });
+        }
       });
     }
   }
@@ -881,7 +887,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 urlTemplate: _basemap.urlTemplate,
                 userAgentPackageName: 'au.gov.vic.wcma.wfm',
               ),
-              if (activeLayers.isNotEmpty)
+              if (_initialFitDone && activeLayers.isNotEmpty)
                 TileLayer(
                   key: ValueKey('${activeLayers.join(",")}_$_cameraSettleCount'),
                   tileProvider: WmsTileProvider(
@@ -893,7 +899,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     transparent: true,
                   ),
                   urlTemplate: 'wms://tile',
-                  tileDimension: 256,
+                  tileDimension: 512,
                 ),
               if (boundaryPolygons.isNotEmpty)
                 PolygonLayer(
