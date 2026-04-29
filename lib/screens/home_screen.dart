@@ -133,6 +133,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return effective;
   }
 
+  List<String> get _sortedActiveDepthLayers {
+    final list = _activeDepthLayers;
+    list.sort();
+    return list;
+  }
+
+  List<String> get _sortedEnabledBaseLayers {
+    final list = _enabledBaseLayers.toList()..sort();
+    return list;
+  }
+
   bool get _hasActiveDepthLayers => _activeDepthLayers.isNotEmpty;
 
   Future<void> _loadBoundary() async {
@@ -826,7 +837,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _sheetPixelHeight =
           MediaQuery.sizeOf(context).height * _sheetInitial;
     }
-    final activeLayers = _activeLayers;
     final boundaryPolygons = _boundaryService.polygons;
 
     return Scaffold(
@@ -907,20 +917,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 urlTemplate: _basemap.urlTemplate,
                 userAgentPackageName: 'au.gov.vic.wcma.wfm',
               ),
-              if (_initialFitDone && activeLayers.isNotEmpty)
-                TileLayer(
-                  key: ValueKey('${activeLayers.join(",")}_$_cameraSettleCount'),
-                  tileProvider: WmsTileProvider(
-                    httpClient: _httpClient,
-                    baseEndpoint: _baseEndpointUri,
-                    mapPath: _mapPath,
-                    layerNames: activeLayers,
-                    imageFormat: 'image/png',
-                    transparent: true,
+              if (_initialFitDone) ...[
+                for (final layerName in _sortedEnabledBaseLayers)
+                  TileLayer(
+                    key: ValueKey('wms_base_$layerName'),
+                    tileProvider: WmsTileProvider(
+                      httpClient: _httpClient,
+                      baseEndpoint: _baseEndpointUri,
+                      mapPath: _mapPath,
+                      layerName: layerName,
+                      imageFormat: 'image/png',
+                      transparent: true,
+                    ),
+                    urlTemplate: 'wms://tile',
+                    tileDimension: 256,
                   ),
-                  urlTemplate: 'wms://tile',
-                  tileDimension: 256,
-                ),
+                for (final layerName in _sortedActiveDepthLayers)
+                  TileLayer(
+                    key: ValueKey('wms_depth_$layerName'),
+                    tileProvider: WmsTileProvider(
+                      httpClient: _httpClient,
+                      baseEndpoint: _baseEndpointUri,
+                      mapPath: _mapPath,
+                      layerName: layerName,
+                      imageFormat: 'image/png',
+                      transparent: true,
+                    ),
+                    urlTemplate: 'wms://tile',
+                    tileDimension: 256,
+                  ),
+              ],
               if (boundaryPolygons.isNotEmpty)
                 PolygonLayer(
                   polygons: boundaryPolygons

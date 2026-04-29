@@ -41,7 +41,7 @@ class WmsTileProvider extends TileProvider {
     required this.httpClient,
     required this.baseEndpoint,
     required this.mapPath,
-    required this.layerNames,
+    required this.layerName,
     this.imageFormat = 'image/png',
     this.transparent = true,
   });
@@ -49,7 +49,7 @@ class WmsTileProvider extends TileProvider {
   final http.Client httpClient;
   final Uri baseEndpoint;
   final String mapPath;
-  final List<String> layerNames;
+  final String layerName;
   final String imageFormat;
   final bool transparent;
 
@@ -85,7 +85,7 @@ class WmsTileProvider extends TileProvider {
       'SERVICE': 'WMS',
       'VERSION': '1.3.0',
       'REQUEST': 'GetMap',
-      'LAYERS': layerNames.join(','),
+      'LAYERS': layerName,
       'STYLES': '',
       'FORMAT': imageFormat,
       'TRANSPARENT': transparent ? 'TRUE' : 'FALSE',
