@@ -15,6 +15,7 @@ class AppConfig {
   static const hiddenBaseLayerNames = <String>{
     'Wimmera CMA Boundary',
     'Parcels',
+    'Historic River Gauges',
   };
   static const defaultLayerSubstring100yr = '1% (1 in 100';
 }

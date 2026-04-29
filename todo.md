@@ -43,6 +43,7 @@
 
 ## Backlog (post-launch / nice-to-have)
 
+- [ ] Decide what to do with the **Historic River Gauges** base layer. Currently dropped (hidden via `AppConfig.hiddenBaseLayerNames`). Options to evaluate: keep dropped, surface only in an "advanced" toggle group, restyle to deprioritise visually vs current `River Gauges`, or merge with `River Gauges` server-side and indicate status (active/historic) by symbology.
 - [ ] Re-incorporate the **Parcels** base layer efficiently. Currently dropped (hidden via `AppConfig.hiddenBaseLayerNames`) because rendering hundreds of thousands of parcel polygons through QGIS Server WMS is slow and produces huge tiles. Options to evaluate:
   - Pre-rendered raster XYZ pyramid for parcels (cheap to serve, no per-tile QGIS render).
   - Vector tiles (MVT) with client-side styling — flutter_map_vector or similar — far smaller payloads and crisp at any zoom.
