@@ -1,1 +1,8 @@
-zoom doesnt reload 
+zoom doesnt reload - check
+
+change url
+http://pozi.wcma.work/ows/?MAP=/var/www/qgis_projects/pozi_base/pozi_base.qgs&SERVICE=WMS&REQUEST=GetCapabilities
+
+update icon
+
+store details in the project

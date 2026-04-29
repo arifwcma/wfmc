@@ -28,14 +28,14 @@ class _IdentifyResult {
   const _IdentifyResult({
     required this.layerName,
     this.studyName,
-    this.studyInfo,
     this.depth,
+    this.properties = const {},
   });
 
   final String layerName;
   final String? studyName;
-  final StudyInfo? studyInfo;
   final double? depth;
+  final Map<String, dynamic> properties;
 }
 
 class HomeScreen extends StatefulWidget {
@@ -59,14 +59,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final MapController _mapController = MapController();
 
   List<WmsLayer> _studies = [];
+  List<WmsLayer> _baseLayers = [];
   Map<String, String> _layerToStudy = {};
+  Set<String> _knownLayerNames = <String>{};
   Object? _capsError;
   bool _loadingCaps = true;
   bool _identifying = false;
   bool _mapReady = false;
+  bool _defaultsApplied = false;
 
   Set<String> _enabledStudies = <String>{};
   Set<String> _enabledLayers = <String>{};
+  Set<String> _enabledBaseLayers = <String>{};
   BasemapType _basemap = BasemapType.cartographic;
 
   LatLng? _userLocation;
@@ -110,11 +114,25 @@ class _HomeScreenState extends State<HomeScreen> {
         effective.add(layerName);
       }
     }
+    for (final baseLayerName in _enabledBaseLayers) {
+      effective.add(baseLayerName);
+    }
     effective.sort();
     return effective;
   }
 
-  bool get _hasActiveLayers => _activeLayers.isNotEmpty;
+  List<String> get _activeDepthLayers {
+    final effective = <String>[];
+    for (final layerName in _enabledLayers) {
+      final studyName = _layerToStudy[layerName];
+      if (studyName != null && _enabledStudies.contains(studyName)) {
+        effective.add(layerName);
+      }
+    }
+    return effective;
+  }
+
+  bool get _hasActiveDepthLayers => _activeDepthLayers.isNotEmpty;
 
   Future<void> _loadBoundary() async {
     await _boundaryService.load();
@@ -154,25 +172,33 @@ class _HomeScreenState extends State<HomeScreen> {
         forceRefresh: forceRefresh,
       );
       final studies = _extractStudies(caps.rootLayer);
+      final baseLayers = _extractBaseLayers(caps.rootLayer);
       final layerToStudy = <String, String>{};
+      final knownLayerNames = <String>{};
       for (final study in studies) {
         if (study.name == null) continue;
         for (final layer in study.children) {
           if (layer.name != null) {
             layerToStudy[layer.name!] = study.name!;
+            knownLayerNames.add(layer.name!);
           }
         }
+      }
+      for (final layer in baseLayers) {
+        if (layer.name != null) knownLayerNames.add(layer.name!);
       }
 
       setState(() {
         _studies = studies;
+        _baseLayers = baseLayers;
         _layerToStudy = layerToStudy;
+        _knownLayerNames = knownLayerNames;
         _cameraSettleCount++;
-        if (_enabledStudies.isEmpty) {
-          _enabledStudies = Set<String>.from(AppConfig.defaultEnabledStudies);
-        }
-        if (_enabledLayers.isEmpty) {
-          _enabledLayers = Set<String>.from(AppConfig.defaultEnabledLayers);
+        if (!_defaultsApplied) {
+          _enabledStudies = _defaultEnabledStudies(studies);
+          _enabledLayers = _defaultEnabledLayers(studies);
+          _enabledBaseLayers = _defaultEnabledBaseLayers(baseLayers);
+          _defaultsApplied = true;
         }
       });
     } catch (e) {
@@ -183,21 +209,53 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<WmsLayer> _extractStudies(WmsLayer root) {
-    WmsLayer? depthGroup;
+    return root.children
+        .where((c) => (c.name ?? '').endsWith(AppConfig.studyNameSuffix))
+        .toList();
+  }
 
-    void findDepth(WmsLayer layer) {
-      if (layer.name == AppConfig.depthGroupName) {
-        depthGroup = layer;
-        return;
-      }
-      for (final child in layer.children) {
-        findDepth(child);
-        if (depthGroup != null) return;
+  List<WmsLayer> _extractBaseLayers(WmsLayer root) {
+    for (final child in root.children) {
+      if (child.name == AppConfig.baseLayersGroupName) {
+        return child.children
+            .where((l) =>
+                l.isRequestable && l.name != AppConfig.hiddenBaseLayerName)
+            .toList();
       }
     }
+    return [];
+  }
 
-    findDepth(root);
-    return depthGroup?.children ?? [];
+  Set<String> _defaultEnabledStudies(List<WmsLayer> studies) {
+    final names = <String>{};
+    for (final study in studies) {
+      if (study.name != null) names.add(study.name!);
+    }
+    return names;
+  }
+
+  Set<String> _defaultEnabledLayers(List<WmsLayer> studies) {
+    final names = <String>{};
+    for (final study in studies) {
+      for (final layer in study.children) {
+        final layerName = layer.name;
+        if (layerName != null &&
+            layerName.contains(AppConfig.defaultLayerSubstring100yr)) {
+          names.add(layerName);
+        }
+      }
+    }
+    return names;
+  }
+
+  Set<String> _defaultEnabledBaseLayers(List<WmsLayer> baseLayers) {
+    final names = <String>{};
+    for (final layer in baseLayers) {
+      if (layer.name != null && layer.isVisibleByDefault) {
+        names.add(layer.name!);
+      }
+    }
+    return names;
   }
 
   void _toggleStudy(String studyName, bool enabled) {
@@ -218,6 +276,32 @@ class _HomeScreenState extends State<HomeScreen> {
       newSet.remove(layerName);
     }
     setState(() => _enabledLayers = newSet);
+  }
+
+  void _toggleBaseLayer(String layerName, bool enabled) {
+    final newSet = Set<String>.from(_enabledBaseLayers);
+    if (enabled) {
+      newSet.add(layerName);
+    } else {
+      newSet.remove(layerName);
+    }
+    setState(() => _enabledBaseLayers = newSet);
+  }
+
+  String _layerNameFromFeatureId(String featureId) {
+    String? best;
+    for (final candidate in _knownLayerNames) {
+      if (featureId == candidate || featureId.startsWith('$candidate.')) {
+        if (best == null || candidate.length > best.length) {
+          best = candidate;
+        }
+      }
+    }
+    if (best != null) return best;
+    if (featureId.contains('.')) {
+      return featureId.substring(0, featureId.lastIndexOf('.'));
+    }
+    return featureId;
   }
 
   void _zoomTo(WmsLayer layer) {
@@ -322,36 +406,44 @@ class _HomeScreenState extends State<HomeScreen> {
       final results = <_IdentifyResult>[];
       for (final feature in features) {
         final id = feature['id'] as String? ?? '';
-        final layerName =
-            id.contains('.') ? id.substring(0, id.lastIndexOf('.')) : id;
+        final layerName = _layerNameFromFeatureId(id);
         final props = feature['properties'] as Map<String, dynamic>? ?? {};
-
-        double? depth;
-        for (final entry in props.entries) {
-          double? parsed;
-          if (entry.value is num) {
-            parsed = (entry.value as num).toDouble();
-          } else if (entry.value is String) {
-            parsed = double.tryParse(entry.value as String);
-          }
-          if (parsed != null && parsed > 0) {
-            depth = parsed;
-            break;
-          }
-        }
-
         final studyName = _layerToStudy[layerName];
-        final studyInfo =
-            studyName != null ? StudyMetadata.studies[studyName] : null;
 
-        if (depth == null) continue;
+        if (studyName != null) {
+          double? depth;
+          for (final entry in props.entries) {
+            double? parsed;
+            if (entry.value is num) {
+              parsed = (entry.value as num).toDouble();
+            } else if (entry.value is String) {
+              parsed = double.tryParse(entry.value as String);
+            }
+            if (parsed != null && parsed > 0) {
+              depth = parsed;
+              break;
+            }
+          }
+          if (depth == null) continue;
+          results.add(_IdentifyResult(
+            layerName: layerName,
+            studyName: studyName,
+            depth: depth,
+          ));
+        } else {
+          if (props.isEmpty) continue;
+          results.add(_IdentifyResult(
+            layerName: layerName,
+            properties: props,
+          ));
+        }
+      }
 
-        results.add(_IdentifyResult(
-          layerName: layerName,
-          studyName: studyName,
-          studyInfo: studyInfo,
-          depth: depth,
-        ));
+      if (results.isEmpty && features.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No flood data at this location')),
+        );
+        return;
       }
 
       await _showIdentifyResults(results, latLng);
@@ -367,12 +459,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showIdentifyResults(
       List<_IdentifyResult> results, LatLng latLng) async {
     final grouped = <String, List<_IdentifyResult>>{};
-    final ungrouped = <_IdentifyResult>[];
+    final baseLayerResults = <_IdentifyResult>[];
     for (final r in results) {
       if (r.studyName != null) {
         (grouped[r.studyName!] ??= []).add(r);
       } else {
-        ungrouped.add(r);
+        baseLayerResults.add(r);
       }
     }
 
@@ -412,26 +504,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         for (final entry in grouped.entries) ...[
-                          if (entry.value.first.studyInfo != null) ...[
-                            Text(
-                              '${entry.value.first.studyInfo!.displayName} '
-                              '${entry.value.first.studyInfo!.completionYear}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            for (final r in entry.value)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  '${r.layerName}: ${r.depth!.toStringAsFixed(2)} m',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
+                          Text(
+                            StudyReports.displayNameFor(entry.key),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          for (final r in entry.value)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                '${r.layerName}: ${r.depth!.toStringAsFixed(2)} m',
+                                style: const TextStyle(fontSize: 16),
                               ),
+                            ),
+                          if (StudyReports.reportUrlFor(entry.key) != null) ...[
                             const SizedBox(height: 8),
                             InkWell(
                               onTap: () => launchUrl(
                                 Uri.parse(
-                                    entry.value.first.studyInfo!.reportUrl),
+                                    StudyReports.reportUrlFor(entry.key)!),
                                 mode: LaunchMode.externalApplication,
                               ),
                               child: Text(
@@ -445,14 +536,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                           const Divider(),
                         ],
-                        for (final r in ungrouped) ...[
+                        for (final r in baseLayerResults) ...[
                           Text(
                             r.layerName,
                             style:
                                 const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          Text(
-                              'Flood depth: ${r.depth!.toStringAsFixed(2)} m'),
+                          for (final entry in r.properties.entries)
+                            if (entry.value != null &&
+                                entry.value.toString().trim().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  '${entry.key}: ${entry.value}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
                           const Divider(),
                         ],
                       ],
@@ -507,8 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _autoSelectClosestStudy(LatLng userLocation) {
     if (_studies.isEmpty) return;
 
-    String? closestStudy;
-    final closestLayers = <String>{};
+    WmsLayer? closestStudy;
     double closestDist = double.infinity;
 
     for (final study in _studies) {
@@ -518,21 +616,27 @@ class _HomeScreenState extends State<HomeScreen> {
       final dist = _distanceSq(userLocation, centerLatLng);
       if (dist < closestDist) {
         closestDist = dist;
-        closestStudy = study.name;
-        closestLayers.clear();
-        final meta = StudyMetadata.studies[study.name!];
-        if (meta != null) {
-          closestLayers.addAll(meta.layers100yr);
-        }
+        closestStudy = study;
       }
     }
 
-    if (closestStudy != null && closestLayers.isNotEmpty) {
-      setState(() {
-        _enabledStudies = {closestStudy!};
-        _enabledLayers = Set<String>.from(closestLayers);
-      });
+    if (closestStudy == null) return;
+
+    final layers100yr = <String>{};
+    for (final layer in closestStudy.children) {
+      final layerName = layer.name;
+      if (layerName != null &&
+          layerName.contains(AppConfig.defaultLayerSubstring100yr)) {
+        layers100yr.add(layerName);
+      }
     }
+
+    if (layers100yr.isEmpty) return;
+
+    setState(() {
+      _enabledStudies = {closestStudy!.name!};
+      _enabledLayers = layers100yr;
+    });
   }
 
   double _distanceSq(LatLng a, LatLng b) {
@@ -841,7 +945,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          if (_hasActiveLayers)
+          if (_hasActiveDepthLayers)
             Positioned(
               top: 12,
               right: 12,
@@ -995,10 +1099,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return StudyList(
       studies: _studies,
+      baseLayers: _baseLayers,
       enabledStudies: _enabledStudies,
       enabledLayers: _enabledLayers,
+      enabledBaseLayers: _enabledBaseLayers,
       onStudyToggled: _toggleStudy,
       onLayerToggled: _toggleLayer,
+      onBaseLayerToggled: _toggleBaseLayer,
       onZoomTo: _zoomTo,
       scrollController: scrollController,
     );

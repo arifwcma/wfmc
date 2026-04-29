@@ -4,48 +4,63 @@ Flutter app (Android / iOS / Web) for viewing Wimmera flood maps from QGIS Serve
 
 ## Startup Defaults
 
-- **All study groups enabled** on first launch
-- **Only the 100-year (ARI100) layer per group** enabled — no other return periods
-- Defaults are defined in `lib/config/app_config.dart` (`defaultEnabledStudies`, `defaultEnabledLayers`)
+- **All studies enabled** on first launch
+- **Only the 1% (1 in 100yr) layer per study** enabled — no other return periods
+- One default base layer enabled: `Flood Investigation Study Areas`
+- Defaults are computed at runtime from the WMS GetCapabilities response — not hardcoded
 - Do NOT auto-change the layer selection on startup (no auto-locate)
 - The map zooms to fit the WCMA boundary on startup
+
+## Server Convention (source of truth)
+
+- The app derives studies, layer names, and default visibility directly from the server's WMS Capabilities
+- A "study" = any direct child of the root layer whose `Name` ends with ` Flood Depths`
+- The "100yr" default layer = any child of a study whose `Name` contains `1% (1 in 100`
+- Base layers = children of the `Base Layers` group (excluding `Wimmera CMA Boundary`, which is rendered locally from `assets/wcma_boundary.geojson`)
+- A base layer is on by default if its `<Keyword>visible=true</Keyword>` is present
+- Constants describing this convention live in `lib/config/app_config.dart`
 
 ## Locate Me Behaviour
 
 - Triggered **only** by the user pressing the Locate Me FAB — never automatic
 - Zooms to the user's GPS position
-- Auto-selects the closest study's 100-year layer (replaces current selection)
+- Auto-selects the closest study's 100yr layers (replaces current selection)
 
-## Study Metadata
+## Study Reports
 
-- `lib/config/study_metadata.dart` maps each study to its display name, completion year, report URL, and 100yr layer names
-- Report URLs are currently stubs — update with real CMA website links when available
+- `lib/config/study_metadata.dart` (`StudyReports`) is just a `Map<String, String>` of literal server study Name → report PDF URL
+- Used only for the "For more info see Final Report" link in the identify panel
+- `displayNameFor()` strips the trailing ` Flood Depths` for UI labels
 
 ## Writing Constraints
 
 - Only write files inside the `wfmc` project folder
-- Do NOT modify `wfma` or `wfml` without explicit permission
+- Do NOT modify the `pozi_base` QGIS project without explicit permission
 
 ## Key Files
 
 | Path | Description |
 |---|---|
 | `lib/main.dart` | Entry point, tile cache init |
-| `lib/config/app_config.dart` | Default studies/layers, basemap config |
-| `lib/config/study_metadata.dart` | Study display names, years, report URLs |
+| `lib/config/app_config.dart` | Server convention constants, basemap config, org info |
+| `lib/config/study_metadata.dart` | `StudyReports`: study Name → report URL + display-name helper |
 | `lib/screens/home_screen.dart` | Main map UI, all features |
 | `lib/screens/about_screen.dart` | About Wimmera CMA page |
+| `lib/services/settings_store.dart` | WMS endpoint + map-path defaults |
+| `lib/services/wms_capabilities_service.dart` | Capabilities fetch + parse + cache |
 | `lib/services/wms_tile_provider.dart` | WMS tile provider + offline cache |
+| `lib/services/wms_feature_info_service.dart` | GetFeatureInfo client |
 | `lib/services/location_service.dart` | GPS wrapper |
 | `lib/services/geocoding_service.dart` | Nominatim address search |
 | `lib/services/bookmark_service.dart` | Saved locations CRUD |
-| `lib/widgets/study_list.dart` | Layer selection drawer UI |
+| `lib/widgets/study_list.dart` | Studies + base layers selection UI |
 | `lib/widgets/place_search_delegate.dart` | Address search UI |
 
 ## WMS Server
 
-- Endpoint: `https://wimmera.xyz/qgis/`
-- Map path: `/var/www/qgis/wfma/wfma.qgs`
+- Endpoint: `https://pozi.wcma.work/ows/`
+- Map path: `/var/www/qgis_projects/pozi_base/pozi_base.qgs`
+- Service title (root layer Name): `WCMA`
 - CRS: EPSG:3857
 - Format: image/png, transparent
 

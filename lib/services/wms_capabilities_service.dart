@@ -15,8 +15,8 @@ class WmsCapabilitiesService {
   final http.Client httpClient;
   final SharedPreferences prefs;
 
-  static const _prefsCapabilitiesXmlKey = 'wms.capabilitiesXml';
-  static const _prefsCapabilitiesFetchedAtKey = 'wms.capabilitiesFetchedAtEpochMs';
+  static const _prefsCapabilitiesXmlKey = 'wms.capabilitiesXml.v2';
+  static const _prefsCapabilitiesFetchedAtKey = 'wms.capabilitiesFetchedAtEpochMs.v2';
 
   int? get cachedFetchedAtEpochMs => prefs.getInt(_prefsCapabilitiesFetchedAtKey);
 
@@ -95,6 +95,15 @@ class WmsCapabilitiesService {
       }
     }
 
+    final keywords = <String>[];
+    final keywordList = el.getElement('KeywordList');
+    if (keywordList != null) {
+      for (final kw in keywordList.findElements('Keyword')) {
+        final text = kw.innerText.trim();
+        if (text.isNotEmpty) keywords.add(text);
+      }
+    }
+
     final children = <WmsLayer>[];
     for (final child in el.findElements('Layer')) {
       children.add(_parseLayer(child));
@@ -106,6 +115,7 @@ class WmsCapabilitiesService {
       children: children,
       queryable: queryable,
       bbox3857: bbox3857,
+      keywords: keywords,
     );
   }
 

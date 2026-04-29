@@ -10,36 +10,10 @@ class AppConfig {
   static const contactDisplayName = 'Software App Developer';
   static const feedbackSubject = 'Wimmera Flood Maps Feedback';
 
-  static const depthGroupName = 'Depth';
-
-  static const defaultEnabledStudies = <String>{
-    'Concongella_2015',
-    'Dunmunkle_2017',
-    'HallsGap_2017',
-    'HorshamWartook_2017',
-    'MountWilliam_2014',
-    'Natimuk_2013',
-    'Stawell_2024',
-    'UpperWimmera_2014',
-    'WarracknabealBrim_2016',
-    'LowerWimmera_2016',
-    'WimmeraRiverYarriambiackCreek_2010',
-  };
-
-  static const defaultEnabledLayers = <String>{
-    'Concongella_100y_d_Max',
-    'Dunm17RvDepthARI100',
-    'HGAP17RvDepthARI100',
-    'Hors19RvDepthARI100',
-    'MTW_E01_100Y_050_D_MAX',
-    'dep_100y',
-    'Stawell24RvDepthARI100',
-    'StawellG24RvDepthARI100',
-    'UW_E01_100y_052_D_Max_g007_50',
-    'WaBr15Dep100',
-    'Wimm16RvDepthARI100',
-    'l_100y_existing_flood_depths',
-  };
+  static const studyNameSuffix = ' Flood Depths';
+  static const baseLayersGroupName = 'Base Layers';
+  static const hiddenBaseLayerName = 'Wimmera CMA Boundary';
+  static const defaultLayerSubstring100yr = '1% (1 in 100';
 }
 
 enum BasemapType {

@@ -10,6 +10,7 @@ class WmsLayer {
     required this.children,
     required this.queryable,
     required this.bbox3857,
+    this.keywords = const [],
   });
 
   final String? name;
@@ -17,9 +18,11 @@ class WmsLayer {
   final List<WmsLayer> children;
   final bool queryable;
   final WmsBBox? bbox3857;
+  final List<String> keywords;
 
   bool get isLeaf => children.isEmpty;
   bool get isRequestable => (name ?? '').isNotEmpty;
+  bool get isVisibleByDefault => keywords.contains('visible=true');
 }
 
 @immutable

@@ -7,19 +7,25 @@ class StudyList extends StatefulWidget {
   const StudyList({
     super.key,
     required this.studies,
+    required this.baseLayers,
     required this.enabledStudies,
     required this.enabledLayers,
+    required this.enabledBaseLayers,
     required this.onStudyToggled,
     required this.onLayerToggled,
+    required this.onBaseLayerToggled,
     required this.onZoomTo,
     this.scrollController,
   });
 
   final List<WmsLayer> studies;
+  final List<WmsLayer> baseLayers;
   final Set<String> enabledStudies;
   final Set<String> enabledLayers;
+  final Set<String> enabledBaseLayers;
   final void Function(String studyName, bool enabled) onStudyToggled;
   final void Function(String layerName, bool enabled) onLayerToggled;
+  final void Function(String baseLayerName, bool enabled) onBaseLayerToggled;
   final void Function(WmsLayer layer) onZoomTo;
   final ScrollController? scrollController;
 
@@ -29,19 +35,7 @@ class StudyList extends StatefulWidget {
 
 class _StudyListState extends State<StudyList> {
   final Set<String> _expandedStudies = {};
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  String _studyDisplayName(String studyName) {
-    final info = StudyMetadata.studies[studyName];
-    if (info != null) {
-      return '${info.displayName} ${info.completionYear}';
-    }
-    return studyName;
-  }
+  bool _baseLayersExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +76,7 @@ class _StudyListState extends State<StudyList> {
                     },
                   ),
                   title: Text(
-                    _studyDisplayName(studyName),
+                    StudyReports.displayNameFor(studyName),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   trailing: Row(
@@ -134,6 +128,55 @@ class _StudyListState extends State<StudyList> {
             );
           },
         ),
+        if (widget.baseLayers.isNotEmpty)
+          SliverToBoxAdapter(
+            child: _buildBaseLayersSection(context),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBaseLayersSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.layers_outlined),
+          title: const Text(
+            'Base Layers',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          trailing: IconButton(
+            icon: Icon(
+              _baseLayersExpanded ? Icons.expand_less : Icons.expand_more,
+            ),
+            onPressed: () {
+              setState(() => _baseLayersExpanded = !_baseLayersExpanded);
+            },
+          ),
+          onTap: () {
+            setState(() => _baseLayersExpanded = !_baseLayersExpanded);
+          },
+        ),
+        if (_baseLayersExpanded)
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: Column(
+              children: widget.baseLayers
+                  .where((l) => l.isRequestable)
+                  .map((layer) => _LayerTile(
+                        layer: layer,
+                        isSelected:
+                            widget.enabledBaseLayers.contains(layer.name),
+                        isParentEnabled: true,
+                        onToggle: (v) =>
+                            widget.onBaseLayerToggled(layer.name!, v),
+                        onZoomTo: () => widget.onZoomTo(layer),
+                      ))
+                  .toList(),
+            ),
+          ),
+        const Divider(height: 1),
       ],
     );
   }
@@ -157,7 +200,7 @@ class _LayerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectivelyEnabled = isSelected && isParentEnabled;
-    
+
     return ListTile(
       dense: true,
       leading: Checkbox(

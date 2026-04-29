@@ -5,11 +5,11 @@ class SettingsStore {
 
   final SharedPreferences prefs;
 
-  static const _baseEndpointKey = 'settings.baseEndpoint';
-  static const _mapPathKey = 'settings.mapPath';
+  static const _baseEndpointKey = 'settings.baseEndpoint.v2';
+  static const _mapPathKey = 'settings.mapPath.v2';
 
-  static const defaultBaseEndpoint = 'https://wimmera.xyz/qgis/';
-  static const defaultMapPath = '/srv/data/wfml/wfml.qgs';
+  static const defaultBaseEndpoint = 'https://pozi.wcma.work/ows/';
+  static const defaultMapPath = '/var/www/qgis_projects/pozi_base/pozi_base.qgs';
 
   String get baseEndpoint => prefs.getString(_baseEndpointKey) ?? defaultBaseEndpoint;
   String get mapPath => prefs.getString(_mapPathKey) ?? defaultMapPath;
