@@ -83,6 +83,47 @@ All containers share the `internal-apps` Docker network (the reverse-proxy conta
 - Compose roots: `/home/ssm-user/apps/mapnj2/`, `/home/ssm-user/apps/xyz/`
 - Shared GEE service-account secret: `/home/ssm-user/secrets/mapnj2/service-account.json`
 
+## `pozi_base.qgs` — WMS layer structure (live)
+
+The Flutter app talks to this project. Layer hierarchy (depth 0 = WMS root, depth 1 = wrapper, depth 2 = study/base groups, depth 3 = leaves):
+
+```
+[GROUP] (root)
+  [GROUP] WCMA                                     ← single wrapper around everything
+    [GROUP] Concongella 2015 Flood Depths          ← study group (name ends with " Flood Depths")
+      [LEAF]  Concongella 0.5% (1 in 200yr)
+      [LEAF]  Concongella 1% (1 in 100yr)          ← default-on (substring "1% (1 in 100")
+      [LEAF]  Concongella 2% (1 in 50yr)
+      ... (6 recurrence levels)
+    [GROUP] Dunmunkle 2017 Flood Depths
+      [LEAF]  Rupanyup Post Mitigation 1% (1 in 100yr)   ← lives under Dunmunkle, not its own group
+      [LEAF]  Dunmunkle 0.5% (1 in 200yr)
+      ...
+    [GROUP] Halls Gap 2017 Flood Depths            ← 6 recurrence levels each
+    [GROUP] Horsham Wartook 2019 Flood Depths
+    [GROUP] Lower Wimmera 2016 Flood Depths
+    [GROUP] Mt William 2014 Flood Depths
+    [GROUP] Natimuk 2013 Flood Depths              ← contains Natimuk Township + Natimuk Catchment leaves
+    [GROUP] Stawell 2024 Flood Depths              ← 16 leaves: 8x Stawell Flood Depths + 8x Stawell Golf
+    [GROUP] Upper Wimmera 2014 Flood Depths
+    [GROUP] Warracknabeal Brim 2015 Flood Depths
+    [GROUP] Wimmera River Yarriambiack Creek 2010 Flood Depths
+    [GROUP] Base Layers
+      [LEAF]  Flood Investigation Study Areas
+      [LEAF]  Rivers and Streams
+      [LEAF]  Wetlands
+      [LEAF]  River Gauges
+      [LEAF]  Historic River Gauges
+      [LEAF]  Parcels
+      [LEAF]  Wimmera CMA Boundary                 ← excluded from app's "Base Layers" panel (used for boundary fit only, locally)
+```
+
+Conventions the app relies on:
+- A study group is **any group whose `<Name>` ends with `' Flood Depths'`**, located at any depth (currently depth 2).
+- `Base Layers` is a uniquely-named group, located at any depth.
+- The app extracts both recursively (so the `WCMA` wrapper is transparent to it).
+- Default-on leaves are those whose name contains `'1% (1 in 100'`.
+
 ## Public domain map
 
 All vhosts are defined in a single file: `/home/ssm-user/apps/reverse-proxy/nginx/conf.d/default.conf`.
@@ -93,7 +134,7 @@ All vhosts are defined in a single file: `/home/ssm-user/apps/reverse-proxy/ngin
 | `xyz.wcma.work` | reverse-proxy → `xyz:3002` | Next.js XYZ tile server (no rate limit). |
 | `parcels.wcma.work` | reverse-proxy → `qgis-server:80` | Hard-pinned `MAP=/var/www/qgis_projects/wimmera_parcels/wimmera_parcels.qgz`; non-matching `MAP` returns `403`. |
 | `wfml.wcma.work` | reverse-proxy → `qgis-server:80` (`/ows/`) + `lizmap-nginx:80` (`/`) | Lizmap front; `MAP` whitelisted to `^/var/www/qgis_projects/wfml/`. |
-| `pozi.wcma.work` | reverse-proxy → `qgis-server:80` | WMS endpoint at `/ows/?MAP=/var/www/qgis_projects/pozi_base/pozi_base.qgs`. **This is what the Flutter app talks to.** Hard-pinned via `if ($arg_MAP != "..."){ return 403; }`. |
+| `pozi.wcma.work` | reverse-proxy → `qgis-server:80` | WMS endpoint at `/ows/?MAP=/var/www/qgis_projects/pozi_base/pozi_base.qgs`. **This is what the Flutter app talks to.** Hard-pinned via `if ($arg_MAP != "..."){ return 403; }`. CORS open: `Access-Control-Allow-Origin "*"` is sent for both `:80` and `:443` server blocks (added 2026-04-29 to allow Flutter web / browser usage). |
 
 ## QGIS Server container internals
 
@@ -168,7 +209,7 @@ The conf.d directory and `nginx.conf` are owned by `ssm-user`; reading from the 
 
 Pinned here so any server-side change keeps these in mind:
 
-- Tile size: **512×512 PNG** (`WIDTH=512&HEIGHT=512`). One screen of map ≈ 4–9 tiles instead of 16–25.
+- Tile size: **256×256 PNG** (`WIDTH=256&HEIGHT=256`) — standard Web Mercator XYZ. Bumping `flutter_map`'s `tileDimension` and the WMS `WIDTH/HEIGHT` to 512 desyncs `flutter_map`'s tile-coordinate addressing from the BBOX our provider builds (we end up requesting tiles for the wrong half of the world); leave it at 256.
 - Concurrency: **2 in-flight WMS requests** per device (client-side `Pool`).
 - Retry policy: 4 attempts on `{429, 502, 503, 504}` with jittered backoffs `~800ms / 2s / 4.5s` (±25%).
 - Tile cache: persistent on-device disk cache; failed fetch falls back to last-good cached tile when available.

@@ -215,21 +215,41 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<WmsLayer> _extractStudies(WmsLayer root) {
-    return root.children
-        .where((c) => (c.name ?? '').endsWith(AppConfig.studyNameSuffix))
-        .toList();
+    final out = <WmsLayer>[];
+    void walk(WmsLayer layer) {
+      final isStudyGroup = layer.children.isNotEmpty &&
+          (layer.name ?? '').endsWith(AppConfig.studyNameSuffix);
+      if (isStudyGroup) {
+        out.add(layer);
+        return;
+      }
+      for (final child in layer.children) {
+        walk(child);
+      }
+    }
+    walk(root);
+    return out;
   }
 
   List<WmsLayer> _extractBaseLayers(WmsLayer root) {
-    for (final child in root.children) {
-      if (child.name == AppConfig.baseLayersGroupName) {
-        return child.children
-            .where((l) =>
-                l.isRequestable && l.name != AppConfig.hiddenBaseLayerName)
-            .toList();
+    WmsLayer? find(WmsLayer layer) {
+      if (layer.name == AppConfig.baseLayersGroupName &&
+          layer.children.isNotEmpty) {
+        return layer;
       }
+      for (final child in layer.children) {
+        final hit = find(child);
+        if (hit != null) return hit;
+      }
+      return null;
     }
-    return [];
+
+    final group = find(root);
+    if (group == null) return [];
+    return group.children
+        .where(
+            (l) => l.isRequestable && l.name != AppConfig.hiddenBaseLayerName)
+        .toList();
   }
 
   Set<String> _defaultEnabledStudies(List<WmsLayer> studies) {
@@ -899,7 +919,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     transparent: true,
                   ),
                   urlTemplate: 'wms://tile',
-                  tileDimension: 512,
+                  tileDimension: 256,
                 ),
               if (boundaryPolygons.isNotEmpty)
                 PolygonLayer(

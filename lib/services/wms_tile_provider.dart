@@ -53,7 +53,7 @@ class WmsTileProvider extends TileProvider {
   final String imageFormat;
   final bool transparent;
 
-  static const int tileSizePx = 512;
+  static const int tileSizePx = 256;
   static const double earthRadius = 6378137.0;
   static final double originShift = 2 * math.pi * earthRadius / 2.0;
   static final double initialResolution =
