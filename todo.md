@@ -40,3 +40,11 @@
 8. [ ] Government-app verification (evidence we represent Wimmera CMA — letterhead or `.gov.au` email)
 9. [ ] Release track: internal test → production
 10. [ ] iOS publishing (Apple Developer Program USD $99/year) — separate, out of scope here
+
+## Backlog (post-launch / nice-to-have)
+
+- [ ] Re-incorporate the **Parcels** base layer efficiently. Currently dropped (hidden via `AppConfig.hiddenBaseLayerNames`) because rendering hundreds of thousands of parcel polygons through QGIS Server WMS is slow and produces huge tiles. Options to evaluate:
+  - Pre-rendered raster XYZ pyramid for parcels (cheap to serve, no per-tile QGIS render).
+  - Vector tiles (MVT) with client-side styling — flutter_map_vector or similar — far smaller payloads and crisp at any zoom.
+  - Server-side caching (e.g. nginx `proxy_cache` or MapProxy) of the existing WMS tiles, given parcels rarely change.
+  - Show parcels only above a minimum zoom level (e.g. z >= 14) so the heavy render only happens when the user is zoomed in.

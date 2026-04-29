@@ -12,7 +12,10 @@ class AppConfig {
 
   static const studyNameSuffix = ' Flood Depths';
   static const baseLayersGroupName = 'Base Layers';
-  static const hiddenBaseLayerName = 'Wimmera CMA Boundary';
+  static const hiddenBaseLayerNames = <String>{
+    'Wimmera CMA Boundary',
+    'Parcels',
+  };
   static const defaultLayerSubstring100yr = '1% (1 in 100';
 }
 

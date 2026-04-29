@@ -258,8 +258,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final group = find(root);
     if (group == null) return [];
     return group.children
-        .where(
-            (l) => l.isRequestable && l.name != AppConfig.hiddenBaseLayerName)
+        .where((l) =>
+            l.isRequestable &&
+            !AppConfig.hiddenBaseLayerNames.contains(l.name))
         .toList();
   }
 
