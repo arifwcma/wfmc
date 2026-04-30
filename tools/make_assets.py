@@ -4,9 +4,8 @@ from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
 
 ASSETS_DIR = Path('assets')
-TOOLS_DIR = Path('tools')
 SOURCE_ICON_PATH = ASSETS_DIR / 'icon_main.png'
-FONT_PATH = TOOLS_DIR / 'fonts' / 'PlayfairDisplay-Variable.ttf'
+SPLASH_FONT_PATH = Path('C:/Windows/Fonts/arialbd.ttf')
 
 ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
@@ -16,8 +15,8 @@ FOREGROUND_INNER_FRACTION = 0.62
 
 SPLASH_CANVAS = 1152
 SPLASH_INNER_CIRCLE = 768
-SPLASH_LINE_WIDTH_FRACTION = 0.78
-SPLASH_LINE_GAP = 24
+SPLASH_TEXT = 'Wimmera CMA'
+SPLASH_TEXT_WIDTH_FRACTION = 0.85
 
 EDGE_STEP_PIXELS = 8
 COLOR_BACKGROUND_TOLERANCE = 120
@@ -165,33 +164,26 @@ def to_white_silhouette(rgba_image):
 def build_splash_text():
     canvas = Image.new('RGBA', (SPLASH_CANVAS, SPLASH_CANVAS), TRANSPARENT_RGBA)
     draw = ImageDraw.Draw(canvas)
-    target_line_width = int(SPLASH_INNER_CIRCLE * SPLASH_LINE_WIDTH_FRACTION)
-    font = pick_font_size_for_width('Wimmera', target_line_width)
-    line_one = 'Wimmera'
-    line_two = 'CMA'
-    one_height = measure_text_height(font, line_one)
-    two_height = measure_text_height(font, line_two)
-    block_height = one_height + SPLASH_LINE_GAP + two_height
-    block_top = (SPLASH_CANVAS - block_height) // 2
-    draw_text_centered(draw, font, line_one, block_top)
-    draw_text_centered(draw, font, line_two, block_top + one_height + SPLASH_LINE_GAP)
+    target_width = int(SPLASH_INNER_CIRCLE * SPLASH_TEXT_WIDTH_FRACTION)
+    font = pick_font_size_for_width(SPLASH_TEXT, target_width)
+    text_height = measure_text_height(font, SPLASH_TEXT)
+    top_y = (SPLASH_CANVAS - text_height) // 2
+    draw_text_centered(draw, font, SPLASH_TEXT, top_y)
     return canvas
 
 
 def pick_font_size_for_width(text, target_width):
     for size in range(400, 20, -4):
-        font = load_serif_bold(size)
+        font = load_arial_bold(size)
         width = measure_text_width(font, text)
         if width <= target_width:
             print(f'splash font size {size}px gives "{text}" width {width}px (target {target_width}px)')
             return font
-    return load_serif_bold(20)
+    return load_arial_bold(20)
 
 
-def load_serif_bold(size):
-    font = ImageFont.truetype(str(FONT_PATH), size)
-    font.set_variation_by_name('Bold')
-    return font
+def load_arial_bold(size):
+    return ImageFont.truetype(str(SPLASH_FONT_PATH), size)
 
 
 def measure_text_width(font, text):
