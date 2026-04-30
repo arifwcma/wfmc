@@ -5,7 +5,6 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
-from scipy.interpolate import PchipInterpolator
 
 ASSETS_DIR = Path('assets')
 SOURCE_ICON_PATH = ASSETS_DIR / 'icon_main.png'
@@ -15,8 +14,6 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-PIN_SAFE_BOX_PX = int(FOREGROUND_CANVAS * 62 // 108)
-LAUNCHER_BACKGROUND_SKY = np.array([192, 212, 236], dtype=np.uint8)
 MONOCHROME_INNER_FRACTION = 0.55
 
 SPLASH_CANVAS = 1152
@@ -34,17 +31,11 @@ PIN_BBOX_PADDING = 12
 WHITE_RGBA = (255, 255, 255, 255)
 TRANSPARENT_RGBA = (0, 0, 0, 0)
 
-CLASS_SKY = 0
-CLASS_WATER = 1
-CLASS_HILL = 2
-
 
 def main():
     source = Image.open(SOURCE_ICON_PATH).convert('RGBA')
     save_landscape_icons(source)
-    background = build_background(source)
-    background.save(ASSETS_DIR / 'app_icon_background.png')
-    foreground = build_foreground(source)
+    foreground = source.resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS)
     foreground.save(ASSETS_DIR / 'app_icon_foreground.png')
     pin_silhouette = build_pin_silhouette(source)
     monochrome = to_white_silhouette(pin_silhouette)
@@ -66,38 +57,9 @@ def save_landscape_icons(source):
     source.resize((ICON_PLAY_STORE_SIZE, ICON_PLAY_STORE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_512.png')
 
 
-def build_background(source):
-    return build_landscape_without_pin(source)
-
-
-def build_foreground(source):
-    canvas = Image.new('RGBA', (FOREGROUND_CANVAS, FOREGROUND_CANVAS), TRANSPARENT_RGBA)
+def build_pin_silhouette(source):
     pin = extract_pin_with_alpha(source)
-    pin_scaled = scale_to_fit(pin, PIN_SAFE_BOX_PX)
-    offset_x = (FOREGROUND_CANVAS - pin_scaled.width) // 2
-    offset_y = (FOREGROUND_CANVAS - pin_scaled.height) // 2
-    canvas.alpha_composite(pin_scaled, (offset_x, offset_y))
-    return canvas
-
-
-def build_landscape_without_pin(source):
-    rgb = np.array(source.convert('RGB'))
-    height, width = rgb.shape[:2]
-    pin_alpha_mask = compute_pin_alpha_mask(source)
-    pin_columns = pin_alpha_mask.any(axis=0)
-    pin_columns_padded = pad_columns(pin_columns, padding=12)
-    sky_color, water_color, hill_color = sample_landscape_palette(rgb, pin_columns_padded)
-    print(
-        f'colors  sky(sample)={sky_color.tolist()}  sky(painted)={LAUNCHER_BACKGROUND_SKY.tolist()}  '
-        f'water={water_color.tolist()}  hill={hill_color.tolist()}'
-    )
-    classification = classify_landscape_pixels(rgb, sky_color, water_color, hill_color)
-    ground_top = topmost_row_per_column(classification != CLASS_SKY, pin_columns_padded, default=height)
-    hill_top = topmost_row_per_column(classification == CLASS_HILL, pin_columns_padded, default=height)
-    ground_top = smooth_interpolate_curve(ground_top)
-    hill_top = smooth_interpolate_curve(hill_top)
-    out = paint_landscape(height, width, ground_top, hill_top, LAUNCHER_BACKGROUND_SKY, water_color, hill_color)
-    return Image.fromarray(out, 'RGB').resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS)
+    return paste_centered_with_padding(pin, FOREGROUND_CANVAS, MONOCHROME_INNER_FRACTION)
 
 
 def extract_pin_with_alpha(source):
@@ -108,97 +70,6 @@ def extract_pin_with_alpha(source):
     pin_only = crop_to_opaque_bbox(isolated)
     print(f'pin extracted size {pin_only.size}')
     return pin_only
-
-
-def build_pin_silhouette(source):
-    pin = extract_pin_with_alpha(source)
-    return paste_centered_with_padding(pin, FOREGROUND_CANVAS, MONOCHROME_INNER_FRACTION)
-
-
-def compute_pin_alpha_mask(source):
-    isolated = source.copy()
-    clear_all_edge_connected_regions(isolated)
-    keep_only_pin_around_largest_navy_blob(isolated)
-    keep_only_largest_opaque_blob(isolated)
-    return np.array(isolated)[:, :, 3] > 0
-
-
-def pad_columns(boolean_columns, padding):
-    out = boolean_columns.copy()
-    for shift in range(1, padding + 1):
-        out[shift:] |= boolean_columns[:-shift]
-        out[:-shift] |= boolean_columns[shift:]
-    return out
-
-
-def sample_landscape_palette(rgb, pin_columns_padded):
-    height, _ = rgb.shape[:2]
-    clean_columns = ~pin_columns_padded
-    sky_pixels = rgb[: height // 6, clean_columns].reshape(-1, 3)
-    sky_color = np.median(sky_pixels, axis=0).astype(np.uint8)
-    hill_pixels = rgb[5 * height // 6 :, clean_columns].reshape(-1, 3)
-    hill_color = np.median(hill_pixels, axis=0).astype(np.uint8)
-    water_color = sample_water_color(rgb, pin_columns_padded)
-    return sky_color, water_color, hill_color
-
-
-def sample_water_color(rgb, pin_columns_padded):
-    region = rgb[:, ~pin_columns_padded]
-    is_navy = (
-        (region[:, :, 2] > 100)
-        & (region[:, :, 0] < 60)
-        & (region[:, :, 1] > 40)
-        & (region[:, :, 1] < 130)
-    )
-    navy_pixels = region[is_navy]
-    if navy_pixels.size == 0:
-        return np.array([0, 76, 136], dtype=np.uint8)
-    return np.median(navy_pixels, axis=0).astype(np.uint8)
-
-
-def classify_landscape_pixels(rgb, sky_color, water_color, hill_color):
-    pixels = rgb.astype(np.float32)
-    distance_sky = np.linalg.norm(pixels - sky_color.astype(np.float32), axis=2)
-    distance_water = np.linalg.norm(pixels - water_color.astype(np.float32), axis=2)
-    distance_hill = np.linalg.norm(pixels - hill_color.astype(np.float32), axis=2)
-    stacked = np.stack([distance_sky, distance_water, distance_hill], axis=2)
-    return np.argmin(stacked, axis=2)
-
-
-def topmost_row_per_column(boolean_mask, pin_columns_padded, default):
-    _, width = boolean_mask.shape
-    out = np.full(width, -1, dtype=int)
-    for x in range(width):
-        if pin_columns_padded[x]:
-            continue
-        column_hits = np.where(boolean_mask[:, x])[0]
-        out[x] = int(column_hits[0]) if column_hits.size > 0 else default
-    return out
-
-
-def smooth_interpolate_curve(curve):
-    valid = curve >= 0
-    if not valid.any():
-        return curve.copy()
-    valid_x = np.where(valid)[0]
-    valid_y = curve[valid].astype(np.float32)
-    all_x = np.arange(len(curve))
-    if len(valid_x) < 4:
-        return np.interp(all_x, valid_x, valid_y).astype(int)
-    interpolator = PchipInterpolator(valid_x, valid_y, extrapolate=True)
-    smoothed = interpolator(all_x)
-    return ndimage.uniform_filter1d(smoothed, size=8).astype(int)
-
-
-def paint_landscape(height, width, ground_top, hill_top, sky_color, water_color, hill_color):
-    out = np.empty((height, width, 3), dtype=np.uint8)
-    for x in range(width):
-        ground = max(0, min(height, int(ground_top[x])))
-        hill = max(ground, min(height, int(hill_top[x])))
-        out[:ground, x] = sky_color
-        out[ground:hill, x] = water_color
-        out[hill:, x] = hill_color
-    return out
 
 
 def keep_only_largest_opaque_blob(image):
