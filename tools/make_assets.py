@@ -11,7 +11,9 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-FOREGROUND_INNER_FRACTION = 0.62
+FOREGROUND_INNER_FRACTION = 0.55
+
+BACKGROUND_CANVAS = 1024
 
 SPLASH_CANVAS = 1152
 SPLASH_INNER_CIRCLE = 768
@@ -34,6 +36,8 @@ def main():
     save_landscape_icons(source)
     foreground = build_foreground(source)
     foreground.save(ASSETS_DIR / 'app_icon_foreground.png')
+    background = build_background(source)
+    background.save(ASSETS_DIR / 'app_icon_background.png')
     monochrome = to_white_silhouette(foreground)
     monochrome.save(ASSETS_DIR / 'app_icon_monochrome.png')
     splash = build_splash_text()
@@ -54,6 +58,25 @@ def build_foreground(source):
     pin_only = crop_to_opaque_bbox(isolated)
     print(f'pin extracted size {pin_only.size}')
     return paste_centered_with_padding(pin_only, FOREGROUND_CANVAS, FOREGROUND_INNER_FRACTION)
+
+
+def build_background(source):
+    rgb = np.array(source.convert('RGB'))
+    height, width = rgb.shape[:2]
+    sample_x = width // 4
+    sample_column = rgb[:, sample_x].copy()
+    print(f'sampling clean column from x={sample_x}')
+    tiled = np.broadcast_to(sample_column[:, None, :], (height, width, 3)).copy()
+    landscape = Image.fromarray(tiled, 'RGB')
+    return landscape.resize((BACKGROUND_CANVAS, BACKGROUND_CANVAS), Image.LANCZOS)
+
+
+def compute_pin_alpha_mask(source):
+    isolated = source.copy()
+    clear_all_edge_connected_regions(isolated)
+    keep_only_pin_around_largest_navy_blob(isolated)
+    keep_only_largest_opaque_blob(isolated)
+    return np.array(isolated)[:, :, 3] > 0
 
 
 def keep_only_largest_opaque_blob(image):
