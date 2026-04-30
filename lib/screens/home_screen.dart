@@ -903,6 +903,7 @@ class _HomeScreenState extends State<HomeScreen> {
             options: MapOptions(
               initialCenter: const LatLng(-36.7, 142.2),
               initialZoom: 7,
+              maxZoom: MapZoom.mapMaxZoom,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
@@ -917,6 +918,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 key: ValueKey('${_basemap}_$_cameraSettleCount'),
                 urlTemplate: _basemap.urlTemplate,
                 userAgentPackageName: 'au.gov.vic.wcma.wfm',
+                maxNativeZoom: _basemap.maxNativeZoom,
               ),
               if (_initialFitDone) ...[
                 for (final layerName in _sortedEnabledBaseLayers)
@@ -932,6 +934,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     urlTemplate: 'wms://tile',
                     tileDimension: 256,
+                    maxNativeZoom: MapZoom.wmsMaxNativeZoom,
                   ),
                 for (final layerName in _sortedActiveDepthLayers)
                   TileLayer(
@@ -946,6 +949,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     urlTemplate: 'wms://tile',
                     tileDimension: 256,
+                    maxNativeZoom: MapZoom.wmsMaxNativeZoom,
                   ),
               ],
               if (boundaryPolygons.isNotEmpty)

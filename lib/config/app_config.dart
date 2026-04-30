@@ -43,4 +43,20 @@ extension BasemapTypeExtension on BasemapType {
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
     }
   }
+
+  int get maxNativeZoom {
+    switch (this) {
+      case BasemapType.cartographic:
+        return 19;
+      case BasemapType.satellite:
+        return 22;
+    }
+  }
+}
+
+class MapZoom {
+  MapZoom._();
+
+  static const int wmsMaxNativeZoom = 22;
+  static const double mapMaxZoom = 22;
 }
