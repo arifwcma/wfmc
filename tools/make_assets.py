@@ -1,5 +1,4 @@
 from pathlib import Path
-import importlib.util
 import subprocess
 import sys
 
@@ -16,11 +15,9 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-# Layer 108×108 dp; squircle masks clip tighter than a circle. Use ~67dp box (~625px) so the
-# pin clears Samsung; was 72dp (682px) and still clipped slightly top/bottom.
+FOREGROUND_CIRCLE_FRACTION = 0.95
 PIN_SAFE_BOX_PX = int(FOREGROUND_CANVAS * 67 // 108)
-# Must match pubspec flutter_launcher_icons adaptive_icon_background and colors.xml.
-LAUNCHER_BACKGROUND_SKY = np.array([192, 212, 236], dtype=np.uint8)  # #C0D4EC
+LAUNCHER_BACKGROUND_SKY = np.array([192, 212, 236], dtype=np.uint8)
 MONOCHROME_INNER_FRACTION = 0.55
 
 SPLASH_CANVAS = 1152
@@ -58,7 +55,6 @@ def main():
 
 
 def _strip_adaptive_foreground_inset_xml():
-    """Keep mipmap-anydpi-v26/ic_launcher.xml free of flutter_launcher_icons' foreground inset."""
     root = Path(__file__).resolve().parent.parent
     script = Path(__file__).resolve().parent / 'ic_launcher_xml_fix.py'
     subprocess.check_call([sys.executable, str(script), '--fix-only'], cwd=root)
@@ -69,15 +65,18 @@ def save_landscape_icons(source):
     source.resize((ICON_PLAY_STORE_SIZE, ICON_PLAY_STORE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_512.png')
 
 
-def _flatten_launcher_fg_opaque_sky(rgba: Image.Image) -> Image.Image:
-    """Premultiply onto #C0D4EC and alpha=255 (see ic_launcher_xml_fix.flatten_premultiply_opaque_sky)."""
-    spec = importlib.util.spec_from_file_location(
-        '_ic_launcher_fix', Path(__file__).resolve().parent / 'ic_launcher_xml_fix.py'
-    )
-    mod = importlib.util.module_from_spec(spec)
-    assert spec.loader
-    spec.loader.exec_module(mod)
-    return mod.flatten_premultiply_opaque_sky(rgba)
+def apply_circular_clip(rgba_image):
+    width, height = rgba_image.size
+    diameter = int(min(width, height) * FOREGROUND_CIRCLE_FRACTION)
+    ox = (width - diameter) // 2
+    oy = (height - diameter) // 2
+    mask_big = Image.new('L', (width * 2, height * 2), 0)
+    draw = ImageDraw.Draw(mask_big)
+    draw.ellipse([ox * 2, oy * 2, (ox + diameter) * 2 - 1, (oy + diameter) * 2 - 1], fill=255)
+    mask = mask_big.resize((width, height), Image.LANCZOS)
+    result = rgba_image.copy()
+    result.putalpha(mask)
+    return result
 
 
 def build_foreground(source):
@@ -90,7 +89,7 @@ def build_foreground(source):
     offset_x = (FOREGROUND_CANVAS - pin_scaled.width) // 2
     offset_y = (FOREGROUND_CANVAS - pin_scaled.height) // 2
     canvas.alpha_composite(pin_scaled, (offset_x, offset_y))
-    return _flatten_launcher_fg_opaque_sky(canvas)
+    return apply_circular_clip(canvas)
 
 
 def build_landscape_without_pin(source):
@@ -109,9 +108,7 @@ def build_landscape_without_pin(source):
     hill_top = topmost_row_per_column(classification == CLASS_HILL, pin_columns_padded, default=height)
     ground_top = smooth_interpolate_curve(ground_top)
     hill_top = smooth_interpolate_curve(hill_top)
-    out = paint_landscape(
-        height, width, ground_top, hill_top, LAUNCHER_BACKGROUND_SKY, water_color, hill_color
-    )
+    out = paint_landscape(height, width, ground_top, hill_top, LAUNCHER_BACKGROUND_SKY, water_color, hill_color)
     return Image.fromarray(out, 'RGB').resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS)
 
 
