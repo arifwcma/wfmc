@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter build *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(git commit -m ' *)",
+      "Bash(python -c ' *)",
+      "Bash(git restore *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git reset *)",
+      "Bash(flutter clean *)",
+      "Bash(grep -v \"^$\")"
+    ]
+  }
+}

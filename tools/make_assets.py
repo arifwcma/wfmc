@@ -14,6 +14,7 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
+FOREGROUND_FILL_FRACTION = 0.72  # landscape fills canvas; pin must fit within Android's ~66.7% safe zone circle
 MONOCHROME_INNER_FRACTION = 0.55
 
 SPLASH_CANVAS = 1152
@@ -35,10 +36,10 @@ TRANSPARENT_RGBA = (0, 0, 0, 0)
 def main():
     source = Image.open(SOURCE_ICON_PATH).convert('RGBA')
     save_landscape_icons(source)
-    foreground = source.resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS)
+    foreground = paste_centered_with_padding(source, FOREGROUND_CANVAS, FOREGROUND_FILL_FRACTION)
     foreground.save(ASSETS_DIR / 'app_icon_foreground.png')
-    pin_silhouette = build_pin_silhouette(source)
-    monochrome = to_white_silhouette(pin_silhouette)
+    pin = extract_pin_with_alpha(source)
+    monochrome = to_white_silhouette(paste_centered_with_padding(pin, FOREGROUND_CANVAS, MONOCHROME_INNER_FRACTION))
     monochrome.save(ASSETS_DIR / 'app_icon_monochrome.png')
     splash = build_splash_text()
     splash.save(ASSETS_DIR / 'splash_text.png')
@@ -55,11 +56,6 @@ def _strip_adaptive_foreground_inset_xml():
 def save_landscape_icons(source):
     source.resize((ICON_LARGE_SIZE, ICON_LARGE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_1024.png')
     source.resize((ICON_PLAY_STORE_SIZE, ICON_PLAY_STORE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_512.png')
-
-
-def build_pin_silhouette(source):
-    pin = extract_pin_with_alpha(source)
-    return paste_centered_with_padding(pin, FOREGROUND_CANVAS, MONOCHROME_INNER_FRACTION)
 
 
 def extract_pin_with_alpha(source):

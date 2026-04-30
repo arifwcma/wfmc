@@ -1,0 +1,14 @@
+﻿6c62749 revert(icons): restore working 58af04c approach - raw source as foreground, flat #C0D4EC sky background
+237088d fix(icons): landscape to background layer, pin-only foreground
+76d8b4c fix(icons): full-bleed circle foreground, smaller pin, drop stale background PNGs
+d7212a5 fix(icons): pre-bake circular clip into foreground to fix Pixel ring and Samsung clipping
+862b4fa done
+c419c32 done
+c82c2ac fix(icons): full-bleed landscape with smaller pin
+f8c9c2f fix(icons): tighten foreground 12%% to keep pin inside Samsung mask
+58af04c fix(icons): full landscape as foreground on flat sky background
+235566e feat(icons): split adaptive icon across two layers (landscape + pin)
+90106fe Revert "adaptive icon foreground = full landscape (matches source)"
+2ce87ad adaptive icon foreground = full landscape (matches source)
+dff97ee new launcher icon (pin + adaptive + monochrome) and black/serif splash
+5db6ea3 done
