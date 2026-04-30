@@ -15,7 +15,6 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-FOREGROUND_CIRCLE_FRACTION = 1.0
 PIN_SAFE_BOX_PX = int(FOREGROUND_CANVAS * 62 // 108)
 LAUNCHER_BACKGROUND_SKY = np.array([192, 212, 236], dtype=np.uint8)
 MONOCHROME_INNER_FRACTION = 0.55
@@ -43,6 +42,8 @@ CLASS_HILL = 2
 def main():
     source = Image.open(SOURCE_ICON_PATH).convert('RGBA')
     save_landscape_icons(source)
+    background = build_background(source)
+    background.save(ASSETS_DIR / 'app_icon_background.png')
     foreground = build_foreground(source)
     foreground.save(ASSETS_DIR / 'app_icon_foreground.png')
     pin_silhouette = build_pin_silhouette(source)
@@ -65,31 +66,18 @@ def save_landscape_icons(source):
     source.resize((ICON_PLAY_STORE_SIZE, ICON_PLAY_STORE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_512.png')
 
 
-def apply_circular_clip(rgba_image):
-    width, height = rgba_image.size
-    diameter = int(min(width, height) * FOREGROUND_CIRCLE_FRACTION)
-    ox = (width - diameter) // 2
-    oy = (height - diameter) // 2
-    mask_big = Image.new('L', (width * 2, height * 2), 0)
-    draw = ImageDraw.Draw(mask_big)
-    draw.ellipse([ox * 2, oy * 2, (ox + diameter) * 2 - 1, (oy + diameter) * 2 - 1], fill=255)
-    mask = mask_big.resize((width, height), Image.LANCZOS)
-    result = rgba_image.copy()
-    result.putalpha(mask)
-    return result
+def build_background(source):
+    return build_landscape_without_pin(source)
 
 
 def build_foreground(source):
-    sky = (192, 212, 236, 255)
-    canvas = Image.new('RGBA', (FOREGROUND_CANVAS, FOREGROUND_CANVAS), sky)
-    landscape = build_landscape_without_pin(source).convert('RGBA')
-    canvas.paste(landscape, (0, 0))
+    canvas = Image.new('RGBA', (FOREGROUND_CANVAS, FOREGROUND_CANVAS), TRANSPARENT_RGBA)
     pin = extract_pin_with_alpha(source)
     pin_scaled = scale_to_fit(pin, PIN_SAFE_BOX_PX)
     offset_x = (FOREGROUND_CANVAS - pin_scaled.width) // 2
     offset_y = (FOREGROUND_CANVAS - pin_scaled.height) // 2
     canvas.alpha_composite(pin_scaled, (offset_x, offset_y))
-    return apply_circular_clip(canvas)
+    return canvas
 
 
 def build_landscape_without_pin(source):
