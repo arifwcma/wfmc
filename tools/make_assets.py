@@ -1,5 +1,3 @@
-import re
-import subprocess
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -9,13 +7,12 @@ ASSETS_DIR = Path('assets')
 TOOLS_DIR = Path('tools')
 SOURCE_ICON_PATH = ASSETS_DIR / 'icon_main.png'
 FONT_PATH = TOOLS_DIR / 'fonts' / 'PlayfairDisplay-Variable.ttf'
-ADAPTIVE_ICON_XML_PATH = Path('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml')
 
 ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-MONOCHROME_INNER_FRACTION = 0.62
+FOREGROUND_INNER_FRACTION = 0.62
 
 SPLASH_CANVAS = 1152
 SPLASH_INNER_CIRCLE = 768
@@ -36,14 +33,12 @@ TRANSPARENT_RGBA = (0, 0, 0, 0)
 def main():
     source = Image.open(SOURCE_ICON_PATH).convert('RGBA')
     save_landscape_icons(source)
-    foreground = build_full_landscape_foreground(source)
+    foreground = build_foreground(source)
     foreground.save(ASSETS_DIR / 'app_icon_foreground.png')
-    pin_silhouette = build_pin_silhouette(source)
-    pin_silhouette.save(ASSETS_DIR / 'app_icon_monochrome.png')
+    monochrome = to_white_silhouette(foreground)
+    monochrome.save(ASSETS_DIR / 'app_icon_monochrome.png')
     splash = build_splash_text()
     splash.save(ASSETS_DIR / 'splash_text.png')
-    regenerate_launcher_icons()
-    patch_adaptive_icon_xml_to_remove_foreground_inset()
     print('done')
 
 
@@ -52,19 +47,14 @@ def save_landscape_icons(source):
     source.resize((ICON_PLAY_STORE_SIZE, ICON_PLAY_STORE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_512.png')
 
 
-def build_full_landscape_foreground(source):
-    return source.resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS).convert('RGBA')
-
-
-def build_pin_silhouette(source):
+def build_foreground(source):
     isolated = source.copy()
     clear_all_edge_connected_regions(isolated)
     keep_only_pin_around_largest_navy_blob(isolated)
     keep_only_largest_opaque_blob(isolated)
     pin_only = crop_to_opaque_bbox(isolated)
     print(f'pin extracted size {pin_only.size}')
-    padded_pin = paste_centered_with_padding(pin_only, FOREGROUND_CANVAS, MONOCHROME_INNER_FRACTION)
-    return to_white_silhouette(padded_pin)
+    return paste_centered_with_padding(pin_only, FOREGROUND_CANVAS, FOREGROUND_INNER_FRACTION)
 
 
 def keep_only_largest_opaque_blob(image):
@@ -220,28 +210,6 @@ def draw_text_centered(draw, font, text, top_y):
     x = (SPLASH_CANVAS - text_width) // 2 - bbox[0]
     y = top_y - bbox[1]
     draw.text((x, y), text, font=font, fill=WHITE_RGBA)
-
-
-def regenerate_launcher_icons():
-    print('running flutter_launcher_icons...')
-    subprocess.run('dart run flutter_launcher_icons', shell=True, check=True)
-
-
-def patch_adaptive_icon_xml_to_remove_foreground_inset():
-    if not ADAPTIVE_ICON_XML_PATH.exists():
-        print(f'no adaptive-icon xml at {ADAPTIVE_ICON_XML_PATH}; skipping inset patch')
-        return
-    original_xml = ADAPTIVE_ICON_XML_PATH.read_text(encoding='utf-8')
-    inset_foreground_pattern = re.compile(
-        r'<foreground>\s*<inset\s+android:drawable="(@drawable/[^"]+)"\s+android:inset="\d+%"\s*/>\s*</foreground>',
-        re.MULTILINE,
-    )
-    patched_xml = inset_foreground_pattern.sub(r'<foreground android:drawable="\1"/>', original_xml)
-    if patched_xml == original_xml:
-        print(f'no foreground inset to patch in {ADAPTIVE_ICON_XML_PATH}')
-        return
-    ADAPTIVE_ICON_XML_PATH.write_text(patched_xml, encoding='utf-8')
-    print(f'patched foreground inset out of {ADAPTIVE_ICON_XML_PATH}')
 
 
 if __name__ == '__main__':
