@@ -19,10 +19,11 @@ You are picking up the **Wimmera Flood Maps** Flutter project mid-flight. Read t
 ## 1. Standing operational rules Arif gave me
 
 1. **`commit always followed by push`** — never commit and stop. Always push to `origin/master` afterwards.
-2. **Update server-config.mdc automatically** whenever a useful new server fact surfaces. Don't ask permission, just do it.
-3. **Brief by default.** Long explanations only when asked.
-4. **Single recommendation** — propose one path, ask before listing alternatives.
-5. **Never write code in Ask mode.** Tell him to switch to Agent and stop.
+2. **Commit per atomic change.** Every meaningful change ships as its own commit with a descriptive message, then push, before moving on. The point is cheap reverts (`git revert <sha>`) when Arif changes his mind — don't pile up multiple unrelated edits into one big commit.
+3. **Update server-config.mdc automatically** whenever a useful new server fact surfaces. Don't ask permission, just do it.
+4. **Brief by default.** Long explanations only when asked.
+5. **Single recommendation** — propose one path, ask before listing alternatives.
+6. **Never write code in Ask mode.** Tell him to switch to Agent and stop.
 
 ## 2. Server access (works, tested)
 
