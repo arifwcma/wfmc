@@ -921,14 +921,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 maxNativeZoom: _basemap.maxNativeZoom,
               ),
               if (_initialFitDone) ...[
-                for (final layerName in _sortedEnabledBaseLayers)
+                if (_sortedEnabledBaseLayers.isNotEmpty)
                   TileLayer(
-                    key: ValueKey('wms_base_$layerName'),
+                    key: ValueKey(
+                        'wms_base_${_sortedEnabledBaseLayers.join("|")}'),
                     tileProvider: WmsTileProvider(
                       httpClient: _httpClient,
                       baseEndpoint: _baseEndpointUri,
                       mapPath: _mapPath,
-                      layerName: layerName,
+                      layerName: _sortedEnabledBaseLayers.join(','),
                       imageFormat: 'image/png',
                       transparent: true,
                     ),
@@ -936,14 +937,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     tileDimension: 256,
                     maxNativeZoom: MapZoom.wmsMaxNativeZoom,
                   ),
-                for (final layerName in _sortedActiveDepthLayers)
+                if (_sortedActiveDepthLayers.isNotEmpty)
                   TileLayer(
-                    key: ValueKey('wms_depth_$layerName'),
+                    key: ValueKey(
+                        'wms_depth_${_sortedActiveDepthLayers.join("|")}'),
                     tileProvider: WmsTileProvider(
                       httpClient: _httpClient,
                       baseEndpoint: _baseEndpointUri,
                       mapPath: _mapPath,
-                      layerName: layerName,
+                      layerName: _sortedActiveDepthLayers.join(','),
                       imageFormat: 'image/png',
                       transparent: true,
                     ),
