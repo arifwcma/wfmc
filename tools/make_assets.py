@@ -11,6 +11,7 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
+FOREGROUND_INNER_FRACTION = 0.88
 MONOCHROME_INNER_FRACTION = 0.55
 
 SPLASH_CANVAS = 1152
@@ -32,7 +33,7 @@ TRANSPARENT_RGBA = (0, 0, 0, 0)
 def main():
     source = Image.open(SOURCE_ICON_PATH).convert('RGBA')
     save_landscape_icons(source)
-    foreground = source.resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS)
+    foreground = paste_centered_with_padding(source, FOREGROUND_CANVAS, FOREGROUND_INNER_FRACTION)
     foreground.save(ASSETS_DIR / 'app_icon_foreground.png')
     pin_silhouette = build_pin_silhouette(source)
     monochrome = to_white_silhouette(pin_silhouette)
