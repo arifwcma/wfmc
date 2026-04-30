@@ -52,6 +52,7 @@ I have direct SSH from this workstation; you can run patches on the live server 
 4. **`hiddenBaseLayerName` is a `Set` now**, not a single string. Old Read tool searches for the singular form will mislead you.
 5. **GetMap with multiple layers** fails entire-request if any one layer name doesn't exist server-side (`HTTP 400 LayerNotDefined`). With Option A this is moot per-layer, but worth knowing for `GetFeatureInfo` (which still bundles).
 6. **Server has only 1 FCGI worker** (`spawn-fcgi` default), with 2 parallel render threads. Client-side `_requestPool = Pool(2)` matches that. Don't push concurrency much higher without bumping the server.
+7. **`mipmap-anydpi-v26/ic_launcher.xml` foreground must NOT be wrapped in `<inset>`.** flutter_launcher_icons regenerates this XML with `<inset android:inset="16%"/>` by default, but the icon foreground is the full landscape (`assets/app_icon_foreground.png` = `icon_main.png` at 1024×1024). The 16% inset leaves a sky-coloured ring around the scene on circular launcher masks (Pixel) — boss specifically rejected that. After every `flutter pub run flutter_launcher_icons`, manually re-edit `android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` so foreground is `<foreground android:drawable="@drawable/ic_launcher_foreground"/>` (no `<inset>`). Monochrome `<inset android:inset="16%"/>` stays as-is — it's a pin-only silhouette designed for safe zone.
 
 ## 5. What's next on Arif's list
 
