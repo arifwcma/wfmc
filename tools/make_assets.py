@@ -1,4 +1,5 @@
 from pathlib import Path
+import importlib.util
 import subprocess
 import sys
 
@@ -15,9 +16,9 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-# Adaptive icon layer is 108×108 dp; critical content must fit 72×72 dp (18 dp inset).
-# Scale pin to max dimension = 72/108 of canvas so it stays inside the safe zone.
-PIN_SAFE_BOX_PX = int(FOREGROUND_CANVAS * 72 // 108)
+# Layer 108×108 dp; squircle masks clip tighter than a circle. Use ~67dp box (~625px) so the
+# pin clears Samsung; was 72dp (682px) and still clipped slightly top/bottom.
+PIN_SAFE_BOX_PX = int(FOREGROUND_CANVAS * 67 // 108)
 # Must match pubspec flutter_launcher_icons adaptive_icon_background and colors.xml.
 LAUNCHER_BACKGROUND_SKY = np.array([192, 212, 236], dtype=np.uint8)  # #C0D4EC
 MONOCHROME_INNER_FRACTION = 0.55
@@ -68,14 +69,28 @@ def save_landscape_icons(source):
     source.resize((ICON_PLAY_STORE_SIZE, ICON_PLAY_STORE_SIZE), Image.LANCZOS).save(ASSETS_DIR / 'app_icon_512.png')
 
 
+def _flatten_launcher_fg_opaque_sky(rgba: Image.Image) -> Image.Image:
+    """Premultiply onto #C0D4EC and alpha=255 (see ic_launcher_xml_fix.flatten_premultiply_opaque_sky)."""
+    spec = importlib.util.spec_from_file_location(
+        '_ic_launcher_fix', Path(__file__).resolve().parent / 'ic_launcher_xml_fix.py'
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader
+    spec.loader.exec_module(mod)
+    return mod.flatten_premultiply_opaque_sky(rgba)
+
+
 def build_foreground(source):
+    sky = (192, 212, 236, 255)
+    canvas = Image.new('RGBA', (FOREGROUND_CANVAS, FOREGROUND_CANVAS), sky)
     landscape = build_landscape_without_pin(source).convert('RGBA')
+    canvas.paste(landscape, (0, 0))
     pin = extract_pin_with_alpha(source)
     pin_scaled = scale_to_fit(pin, PIN_SAFE_BOX_PX)
     offset_x = (FOREGROUND_CANVAS - pin_scaled.width) // 2
     offset_y = (FOREGROUND_CANVAS - pin_scaled.height) // 2
-    landscape.paste(pin_scaled, (offset_x, offset_y), pin_scaled)
-    return landscape
+    canvas.alpha_composite(pin_scaled, (offset_x, offset_y))
+    return _flatten_launcher_fg_opaque_sky(canvas)
 
 
 def build_landscape_without_pin(source):
