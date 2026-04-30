@@ -1,4 +1,7 @@
 from pathlib import Path
+import subprocess
+import sys
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
@@ -12,7 +15,11 @@ ICON_LARGE_SIZE = 1024
 ICON_PLAY_STORE_SIZE = 512
 
 FOREGROUND_CANVAS = 1024
-PIN_INNER_FRACTION = 0.85
+# Adaptive icon layer is 108×108 dp; critical content must fit 72×72 dp (18 dp inset).
+# Scale pin to max dimension = 72/108 of canvas so it stays inside the safe zone.
+PIN_SAFE_BOX_PX = int(FOREGROUND_CANVAS * 72 // 108)
+# Must match pubspec flutter_launcher_icons adaptive_icon_background and colors.xml.
+LAUNCHER_BACKGROUND_SKY = np.array([192, 212, 236], dtype=np.uint8)  # #C0D4EC
 MONOCHROME_INNER_FRACTION = 0.55
 
 SPLASH_CANVAS = 1152
@@ -46,6 +53,14 @@ def main():
     splash = build_splash_text()
     splash.save(ASSETS_DIR / 'splash_text.png')
     print('done')
+    _strip_adaptive_foreground_inset_xml()
+
+
+def _strip_adaptive_foreground_inset_xml():
+    """Keep mipmap-anydpi-v26/ic_launcher.xml free of flutter_launcher_icons' foreground inset."""
+    root = Path(__file__).resolve().parent.parent
+    script = Path(__file__).resolve().parent / 'ic_launcher_xml_fix.py'
+    subprocess.check_call([sys.executable, str(script), '--fix-only'], cwd=root)
 
 
 def save_landscape_icons(source):
@@ -56,7 +71,7 @@ def save_landscape_icons(source):
 def build_foreground(source):
     landscape = build_landscape_without_pin(source).convert('RGBA')
     pin = extract_pin_with_alpha(source)
-    pin_scaled = scale_to_fit(pin, int(FOREGROUND_CANVAS * PIN_INNER_FRACTION))
+    pin_scaled = scale_to_fit(pin, PIN_SAFE_BOX_PX)
     offset_x = (FOREGROUND_CANVAS - pin_scaled.width) // 2
     offset_y = (FOREGROUND_CANVAS - pin_scaled.height) // 2
     landscape.paste(pin_scaled, (offset_x, offset_y), pin_scaled)
@@ -70,13 +85,18 @@ def build_landscape_without_pin(source):
     pin_columns = pin_alpha_mask.any(axis=0)
     pin_columns_padded = pad_columns(pin_columns, padding=12)
     sky_color, water_color, hill_color = sample_landscape_palette(rgb, pin_columns_padded)
-    print(f'colors  sky={sky_color.tolist()}  water={water_color.tolist()}  hill={hill_color.tolist()}')
+    print(
+        f'colors  sky(sample)={sky_color.tolist()}  sky(painted)={LAUNCHER_BACKGROUND_SKY.tolist()}  '
+        f'water={water_color.tolist()}  hill={hill_color.tolist()}'
+    )
     classification = classify_landscape_pixels(rgb, sky_color, water_color, hill_color)
     ground_top = topmost_row_per_column(classification != CLASS_SKY, pin_columns_padded, default=height)
     hill_top = topmost_row_per_column(classification == CLASS_HILL, pin_columns_padded, default=height)
     ground_top = smooth_interpolate_curve(ground_top)
     hill_top = smooth_interpolate_curve(hill_top)
-    out = paint_landscape(height, width, ground_top, hill_top, sky_color, water_color, hill_color)
+    out = paint_landscape(
+        height, width, ground_top, hill_top, LAUNCHER_BACKGROUND_SKY, water_color, hill_color
+    )
     return Image.fromarray(out, 'RGB').resize((FOREGROUND_CANVAS, FOREGROUND_CANVAS), Image.LANCZOS)
 
 
