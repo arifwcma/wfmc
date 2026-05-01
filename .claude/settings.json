@@ -10,7 +10,14 @@
       "Bash(git checkout *)",
       "Bash(git reset *)",
       "Bash(flutter clean *)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Read(//c/Users/m.rahman/.claude/projects/c--Users-m-rahman-AndroidStudioProjects-wfmc/memory/**)",
+      "Read(//c/src/flutter/packages/flutter_tools/gradle/src/main/groovy/**)",
+      "Read(//c/src/flutter/packages/flutter_tools/gradle/src/main/kotlin/**)",
+      "Read(//c/src/flutter/packages/flutter_tools/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\m.rahman\\.claude\\projects\\c--Users-m-rahman-AndroidStudioProjects-wfmc\\memory"
     ]
   }
 }
