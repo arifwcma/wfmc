@@ -921,15 +921,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 maxNativeZoom: _basemap.maxNativeZoom,
               ),
               if (_initialFitDone) ...[
-                if (_sortedEnabledBaseLayers.isNotEmpty)
+                for (final baseLayerName in _sortedEnabledBaseLayers)
                   TileLayer(
-                    key: ValueKey(
-                        'wms_base_${_sortedEnabledBaseLayers.join("|")}'),
+                    key: ValueKey('wms_base_$baseLayerName'),
                     tileProvider: WmsTileProvider(
                       httpClient: _httpClient,
                       baseEndpoint: _baseEndpointUri,
                       mapPath: _mapPath,
-                      layerName: _sortedEnabledBaseLayers.join(','),
+                      layerName: baseLayerName,
                       imageFormat: 'image/png',
                       transparent: true,
                     ),

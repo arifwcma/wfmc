@@ -12,7 +12,7 @@ import 'tile_cache.dart';
 
 export 'tile_cache.dart' show TileCache;
 
-final _requestPool = Pool(6);
+final _requestPool = Pool(2);
 final _jitterRng = math.Random();
 
 const _retryStatusCodes = <int>{429, 502, 503, 504};
