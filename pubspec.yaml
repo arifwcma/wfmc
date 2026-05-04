@@ -27,6 +27,7 @@ dependencies:
     git:
       url: https://github.com/josxha/flutter_map_plugins.git
       path: vector_map_tiles_pmtiles
+  vector_tile_renderer: ^6.0.0
 
 dev_dependencies:
   flutter_test:

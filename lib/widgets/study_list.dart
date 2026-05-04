@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/pmtiles_base_layers.dart';
 import '../config/study_metadata.dart';
 import '../models/wms_models.dart';
 
@@ -8,24 +9,31 @@ class StudyList extends StatefulWidget {
     super.key,
     required this.studies,
     required this.baseLayers,
+    required this.pmtilesBaseLayers,
     required this.enabledStudies,
     required this.enabledLayers,
     required this.enabledBaseLayers,
+    required this.enabledPmtilesBaseLayers,
     required this.onStudyToggled,
     required this.onLayerToggled,
     required this.onBaseLayerToggled,
+    required this.onPmtilesBaseLayerToggled,
     required this.onZoomTo,
     this.scrollController,
   });
 
   final List<WmsLayer> studies;
   final List<WmsLayer> baseLayers;
+  final List<PmTilesBaseLayer> pmtilesBaseLayers;
   final Set<String> enabledStudies;
   final Set<String> enabledLayers;
   final Set<String> enabledBaseLayers;
+  final Set<String> enabledPmtilesBaseLayers;
   final void Function(String studyName, bool enabled) onStudyToggled;
   final void Function(String layerName, bool enabled) onLayerToggled;
   final void Function(String baseLayerName, bool enabled) onBaseLayerToggled;
+  final void Function(String pmtilesLayerId, bool enabled)
+      onPmtilesBaseLayerToggled;
   final void Function(WmsLayer layer) onZoomTo;
   final ScrollController? scrollController;
 
@@ -128,7 +136,8 @@ class _StudyListState extends State<StudyList> {
             );
           },
         ),
-        if (widget.baseLayers.isNotEmpty)
+        if (widget.baseLayers.isNotEmpty ||
+            widget.pmtilesBaseLayers.isNotEmpty)
           SliverToBoxAdapter(
             child: _buildBaseLayersSection(context),
           ),
@@ -162,22 +171,54 @@ class _StudyListState extends State<StudyList> {
           Padding(
             padding: const EdgeInsets.only(left: 24),
             child: Column(
-              children: widget.baseLayers
-                  .where((l) => l.isRequestable)
-                  .map((layer) => _LayerTile(
-                        layer: layer,
-                        isSelected:
-                            widget.enabledBaseLayers.contains(layer.name),
-                        isParentEnabled: true,
-                        onToggle: (v) =>
-                            widget.onBaseLayerToggled(layer.name!, v),
-                        onZoomTo: () => widget.onZoomTo(layer),
-                      ))
-                  .toList(),
+              children: [
+                for (final layer
+                    in widget.baseLayers.where((l) => l.isRequestable))
+                  _LayerTile(
+                    layer: layer,
+                    isSelected: widget.enabledBaseLayers.contains(layer.name),
+                    isParentEnabled: true,
+                    onToggle: (v) =>
+                        widget.onBaseLayerToggled(layer.name!, v),
+                    onZoomTo: () => widget.onZoomTo(layer),
+                  ),
+                for (final pm in widget.pmtilesBaseLayers)
+                  _PmTilesLayerTile(
+                    layer: pm,
+                    isSelected:
+                        widget.enabledPmtilesBaseLayers.contains(pm.id),
+                    onToggle: (v) =>
+                        widget.onPmtilesBaseLayerToggled(pm.id, v),
+                  ),
+              ],
             ),
           ),
         const Divider(height: 1),
       ],
+    );
+  }
+}
+
+class _PmTilesLayerTile extends StatelessWidget {
+  const _PmTilesLayerTile({
+    required this.layer,
+    required this.isSelected,
+    required this.onToggle,
+  });
+
+  final PmTilesBaseLayer layer;
+  final bool isSelected;
+  final void Function(bool) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      leading: Checkbox(
+        value: isSelected,
+        onChanged: (v) => onToggle(v ?? false),
+      ),
+      title: Text(layer.title),
     );
   }
 }
