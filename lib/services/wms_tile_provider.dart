@@ -12,7 +12,8 @@ import 'tile_cache.dart';
 
 export 'tile_cache.dart' show TileCache;
 
-final _requestPool = Pool(2);
+final _depthPool = Pool(2);
+final _basePool = Pool(1);
 final _jitterRng = math.Random();
 
 const _retryStatusCodes = <int>{429, 502, 503, 504};
@@ -42,6 +43,7 @@ class WmsTileProvider extends TileProvider {
     required this.baseEndpoint,
     required this.mapPath,
     required this.layerName,
+    required this.isBaseLayer,
     this.imageFormat = 'image/png',
     this.transparent = true,
   });
@@ -50,6 +52,7 @@ class WmsTileProvider extends TileProvider {
   final Uri baseEndpoint;
   final String mapPath;
   final String layerName;
+  final bool isBaseLayer;
   final String imageFormat;
   final bool transparent;
 
@@ -62,7 +65,11 @@ class WmsTileProvider extends TileProvider {
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
     final url = _buildGetMapUrl(coordinates);
-    return WmsNetworkImage(url: url, httpClient: httpClient);
+    return WmsNetworkImage(
+      url: url,
+      httpClient: httpClient,
+      isBaseLayer: isBaseLayer,
+    );
   }
 
   Uri _buildGetMapUrl(TileCoordinates coords) {
@@ -101,10 +108,15 @@ class WmsTileProvider extends TileProvider {
 
 @immutable
 class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
-  const WmsNetworkImage({required this.url, required this.httpClient});
+  const WmsNetworkImage({
+    required this.url,
+    required this.httpClient,
+    required this.isBaseLayer,
+  });
 
   final Uri url;
   final http.Client httpClient;
+  final bool isBaseLayer;
 
   @override
   Future<WmsNetworkImage> obtainKey(ImageConfiguration configuration) {
@@ -125,7 +137,8 @@ class WmsNetworkImage extends ImageProvider<WmsNetworkImage> {
 
   Future<ui.Codec> _loadAsync(
       WmsNetworkImage key, ImageDecoderCallback decode) async {
-    return _requestPool.withResource(() async {
+    final pool = isBaseLayer ? _basePool : _depthPool;
+    return pool.withResource(() async {
       final cacheKey = TileCache.keyFor(key.url);
 
       try {
