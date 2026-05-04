@@ -341,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<PmTilesBaseLayer> get _activePmtilesBaseLayers {
-    return PmTilesBaseLayers.all
+    return PmTilesBaseLayers.visible
         .where((l) => _enabledPmtilesBaseLayers.contains(l.id))
         .toList();
   }
@@ -1114,7 +1114,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return StudyList(
       studies: _studies,
       baseLayers: _baseLayers,
-      pmtilesBaseLayers: PmTilesBaseLayers.all,
+      pmtilesBaseLayers: PmTilesBaseLayers.visible,
       enabledStudies: _enabledStudies,
       enabledLayers: _enabledLayers,
       enabledBaseLayers: _enabledBaseLayers,

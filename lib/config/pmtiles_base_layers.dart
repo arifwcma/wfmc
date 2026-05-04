@@ -1,6 +1,8 @@
 import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart';
 
+import 'app_config.dart';
+
 class PmTilesBaseLayer {
   const PmTilesBaseLayer({
     required this.id,
@@ -21,6 +23,10 @@ class PmTilesBaseLayers {
   PmTilesBaseLayers._();
 
   static const String baseUrl = 'https://baselayers.wcma.work';
+
+  static List<PmTilesBaseLayer> get visible => all
+      .where((l) => !AppConfig.hiddenPmtilesLayerIds.contains(l.id))
+      .toList();
 
   static const List<PmTilesBaseLayer> all = [
     PmTilesBaseLayer(
