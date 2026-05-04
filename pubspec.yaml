@@ -22,6 +22,11 @@ dependencies:
   share_plus: ^10.1.4
   path_provider: ^2.1.5
   flutter_native_splash: ^2.4.7
+  vector_map_tiles: ^9.0.0-beta.8
+  vector_map_tiles_pmtiles:
+    git:
+      url: https://github.com/josxha/flutter_map_plugins.git
+      path: vector_map_tiles_pmtiles
 
 dev_dependencies:
   flutter_test:
