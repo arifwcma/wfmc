@@ -218,7 +218,12 @@ class _PmTilesLayerTile extends StatelessWidget {
         value: isSelected,
         onChanged: (v) => onToggle(v ?? false),
       ),
-      title: Text(layer.title),
+      title: Text(
+        layer.title,
+        style: TextStyle(
+          color: isSelected ? null : Theme.of(context).disabledColor,
+        ),
+      ),
     );
   }
 }
