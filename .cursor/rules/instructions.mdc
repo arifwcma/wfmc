@@ -1,3 +1,9 @@
+# TOP PRIORITY — ASK BEFORE BURNING TOKENS
+
+Before starting anything costly (long exploration, multi-file refactors, large builds, big test runs, deep research, spawning subagents, or any work likely to consume significant tokens/time), STOP and ask Arif for explicit permission first. State briefly what you plan to do and the expected cost. Do not proceed without a clear "yes". A previous agent wasted 13 million tokens — never repeat that.
+
+---
+
 # TOP PRIORITY — READABILITY
 
 Readability is the single highest priority of every piece of code you write for Arif. It overrides brevity, cleverness, idiomatic Python shortcuts, and performance (unless Arif explicitly asks otherwise).
