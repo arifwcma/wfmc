@@ -27,15 +27,13 @@ import '../widgets/study_list.dart';
 class _IdentifyResult {
   const _IdentifyResult({
     required this.layerName,
-    this.studyName,
-    this.depth,
-    this.properties = const {},
+    required this.studyName,
+    required this.depth,
   });
 
   final String layerName;
-  final String? studyName;
-  final double? depth;
-  final Map<String, dynamic> properties;
+  final String studyName;
+  final double depth;
 }
 
 class HomeScreen extends StatefulWidget {
@@ -397,8 +395,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _identify(TapPosition tapPosition, LatLng latLng) async {
     setState(() => _tappedLocation = latLng);
 
-    final active = _activeLayers;
-    if (active.isEmpty) return;
+    final active = _activeDepthLayers;
+    if (active.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No flood data at this location')),
+      );
+      return;
+    }
 
     setState(() => _identifying = true);
 
@@ -445,36 +448,29 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final feature in features) {
         final id = feature['id'] as String? ?? '';
         final layerName = _layerNameFromFeatureId(id);
-        final props = feature['properties'] as Map<String, dynamic>? ?? {};
         final studyName = _layerToStudy[layerName];
+        if (studyName == null) continue;
 
-        if (studyName != null) {
-          double? depth;
-          for (final entry in props.entries) {
-            double? parsed;
-            if (entry.value is num) {
-              parsed = (entry.value as num).toDouble();
-            } else if (entry.value is String) {
-              parsed = double.tryParse(entry.value as String);
-            }
-            if (parsed != null && parsed > 0) {
-              depth = parsed;
-              break;
-            }
+        final props = feature['properties'] as Map<String, dynamic>? ?? {};
+        double? depth;
+        for (final entry in props.entries) {
+          double? parsed;
+          if (entry.value is num) {
+            parsed = (entry.value as num).toDouble();
+          } else if (entry.value is String) {
+            parsed = double.tryParse(entry.value as String);
           }
-          if (depth == null) continue;
-          results.add(_IdentifyResult(
-            layerName: layerName,
-            studyName: studyName,
-            depth: depth,
-          ));
-        } else {
-          if (props.isEmpty) continue;
-          results.add(_IdentifyResult(
-            layerName: layerName,
-            properties: props,
-          ));
+          if (parsed != null && parsed > 0) {
+            depth = parsed;
+            break;
+          }
         }
+        if (depth == null) continue;
+        results.add(_IdentifyResult(
+          layerName: layerName,
+          studyName: studyName,
+          depth: depth,
+        ));
       }
 
       if (results.isEmpty && features.isNotEmpty) {
@@ -497,13 +493,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showIdentifyResults(
       List<_IdentifyResult> results, LatLng latLng) async {
     final grouped = <String, List<_IdentifyResult>>{};
-    final baseLayerResults = <_IdentifyResult>[];
     for (final r in results) {
-      if (r.studyName != null) {
-        (grouped[r.studyName!] ??= []).add(r);
-      } else {
-        baseLayerResults.add(r);
-      }
+      (grouped[r.studyName] ??= []).add(r);
     }
 
     await showModalBottomSheet<void>(
@@ -551,7 +542,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
-                                '${r.layerName}: ${r.depth!.toStringAsFixed(2)} m',
+                                '${r.layerName}: ${r.depth.toStringAsFixed(2)} m',
                                 style: const TextStyle(fontSize: 16),
                               ),
                             ),
@@ -572,24 +563,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ],
-                          const Divider(),
-                        ],
-                        for (final r in baseLayerResults) ...[
-                          Text(
-                            r.layerName,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          for (final entry in r.properties.entries)
-                            if (entry.value != null &&
-                                entry.value.toString().trim().isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  '${entry.key}: ${entry.value}',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
                           const Divider(),
                         ],
                       ],
