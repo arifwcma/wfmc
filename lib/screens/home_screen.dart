@@ -5,8 +5,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vector_map_tiles/vector_map_tiles.dart';
+import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 
 import '../config/app_config.dart';
+import '../config/pmtiles_base_layers.dart';
 import '../config/study_metadata.dart';
 import '../models/bookmark.dart';
 import '../models/wms_models.dart';
@@ -16,6 +19,7 @@ import '../services/boundary_service.dart';
 import '../services/geocoding_service.dart';
 import '../services/http_client_factory.dart';
 import '../services/location_service.dart';
+import '../services/pmtiles_provider_cache.dart';
 import '../services/settings_store.dart';
 import '../services/wms_capabilities_service.dart';
 import '../services/wms_feature_info_service.dart';
@@ -55,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final GeocodingService _geocodingService;
   final LocationService _locationService = LocationService();
   final MapController _mapController = MapController();
+  final PmTilesProviderCache _pmtilesCache = PmTilesProviderCache();
 
   List<WmsLayer> _studies = [];
   List<WmsLayer> _baseLayers = [];
@@ -70,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _enabledStudies = <String>{};
   Set<String> _enabledLayers = <String>{};
   Set<String> _enabledBaseLayers = <String>{};
+  Set<String> _enabledPmtilesBaseLayers = <String>{};
   BasemapType _basemap = BasemapType.cartographic;
 
   LatLng? _userLocation;
@@ -322,6 +328,22 @@ class _HomeScreenState extends State<HomeScreen> {
       newSet.remove(layerName);
     }
     setState(() => _enabledBaseLayers = newSet);
+  }
+
+  void _togglePmtilesBaseLayer(String layerId, bool enabled) {
+    final newSet = Set<String>.from(_enabledPmtilesBaseLayers);
+    if (enabled) {
+      newSet.add(layerId);
+    } else {
+      newSet.remove(layerId);
+    }
+    setState(() => _enabledPmtilesBaseLayers = newSet);
+  }
+
+  List<PmTilesBaseLayer> get _activePmtilesBaseLayers {
+    return PmTilesBaseLayers.visible
+        .where((l) => _enabledPmtilesBaseLayers.contains(l.id))
+        .toList();
   }
 
   String _layerNameFromFeatureId(String featureId) {
@@ -603,7 +625,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() => _userLocation = location);
       _mapController.move(location, 14);
-      _autoSelectClosestStudy(location);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -612,48 +633,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       if (mounted) setState(() => _locating = false);
     }
-  }
-
-  void _autoSelectClosestStudy(LatLng userLocation) {
-    if (_studies.isEmpty) return;
-
-    WmsLayer? closestStudy;
-    double closestDist = double.infinity;
-
-    for (final study in _studies) {
-      if (study.name == null || study.bbox3857 == null) continue;
-      final center = study.bbox3857!.center;
-      final centerLatLng = EpsgUtils.epsg3857ToLatLng(center.$1, center.$2);
-      final dist = _distanceSq(userLocation, centerLatLng);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestStudy = study;
-      }
-    }
-
-    if (closestStudy == null) return;
-
-    final layers100yr = <String>{};
-    for (final layer in closestStudy.children) {
-      final layerName = layer.name;
-      if (layerName != null &&
-          layerName.contains(AppConfig.defaultLayerSubstring100yr)) {
-        layers100yr.add(layerName);
-      }
-    }
-
-    if (layers100yr.isEmpty) return;
-
-    setState(() {
-      _enabledStudies = {closestStudy!.name!};
-      _enabledLayers = layers100yr;
-    });
-  }
-
-  double _distanceSq(LatLng a, LatLng b) {
-    final dLat = a.latitude - b.latitude;
-    final dLng = a.longitude - b.longitude;
-    return dLat * dLat + dLng * dLng;
   }
 
   Future<void> _saveBookmark(LatLng location) async {
@@ -910,6 +889,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     tileDimension: 256,
                     maxNativeZoom: MapZoom.wmsMaxNativeZoom,
                   ),
+                for (final pm in _activePmtilesBaseLayers)
+                  _buildPmtilesLayer(pm),
                 if (_sortedActiveDepthLayers.isNotEmpty)
                   TileLayer(
                     key: ValueKey(
@@ -1133,14 +1114,36 @@ class _HomeScreenState extends State<HomeScreen> {
     return StudyList(
       studies: _studies,
       baseLayers: _baseLayers,
+      pmtilesBaseLayers: PmTilesBaseLayers.visible,
       enabledStudies: _enabledStudies,
       enabledLayers: _enabledLayers,
       enabledBaseLayers: _enabledBaseLayers,
+      enabledPmtilesBaseLayers: _enabledPmtilesBaseLayers,
       onStudyToggled: _toggleStudy,
       onLayerToggled: _toggleLayer,
       onBaseLayerToggled: _toggleBaseLayer,
+      onPmtilesBaseLayerToggled: _togglePmtilesBaseLayer,
       onZoomTo: _zoomTo,
       scrollController: scrollController,
+    );
+  }
+
+  Widget _buildPmtilesLayer(PmTilesBaseLayer layer) {
+    return FutureBuilder<PmTilesVectorTileProvider>(
+      key: ValueKey('pmtiles_${layer.id}'),
+      future: _pmtilesCache.provider(layer.url),
+      builder: (context, snapshot) {
+        final provider = snapshot.data;
+        if (provider == null) {
+          return const SizedBox.shrink();
+        }
+        return VectorTileLayer(
+          theme: PmTilesBaseLayers.themeFor(layer),
+          tileProviders: PmTilesBaseLayers.providersFor(layer, provider),
+          maximumZoom: MapZoom.mapMaxZoom,
+          fileCacheTtl: const Duration(days: 30),
+        );
+      },
     );
   }
 }

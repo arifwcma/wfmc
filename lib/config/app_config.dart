@@ -19,6 +19,11 @@ class AppConfig {
     'Wetlands',
     'Rivers and Streams',
   };
+  static const hiddenPmtilesLayerIds = <String>{
+    'rivers_and_streams',
+    'wetlands',
+    'wparcel',
+  };
   static const defaultLayerSubstring100yr = '1% (1 in 100';
 }
 

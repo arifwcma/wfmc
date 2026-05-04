@@ -129,6 +129,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  executor_lib:
+    dependency: transitive
+    description:
+      name: executor_lib
+      sha256: "95ddf2957d9942d9702855b38dd49677f0ee6a8b77d7b16c0e509c7669d17386"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.2"
   fake_async:
     dependency: transitive
     description:
@@ -280,6 +288,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  idb_shim:
+    dependency: transitive
+    description:
+      name: idb_shim
+      sha256: "071f3b05032fa62e60ca15db9939f8afbaf403b37e67747ac88f858c3e999228"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.6.7+1"
   image:
     dependency: transitive
     description:
@@ -480,6 +496,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pmtiles:
+    dependency: transitive
+    description:
+      name: pmtiles
+      sha256: "9acb9e330e029c2c4eb6faafd53fc1f439dd9c61a0e080778026b2d2d5975944"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
   pool:
     dependency: "direct main"
     description:
@@ -504,6 +528,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  protobuf:
+    dependency: transitive
+    description:
+      name: protobuf
+      sha256: "68645b24e0716782e58948f8467fd42a880f255096a821f9e7d0ec625b00c84d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
+  sembast:
+    dependency: transitive
+    description:
+      name: sembast
+      sha256: c8063c3146c3c8d5f5b04230de7682c768440a575fbda2634f14d22f263197c3
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.8.5+2"
   share_plus:
     dependency: "direct main"
     description:
@@ -613,6 +653,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: c254ade258ec8282947a0acbbc90b9575b4f19673533ee46f2f6e9b3aeefd7c0
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.0"
   term_glyph:
     dependency: transitive
     description:
@@ -725,6 +773,23 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.5.2"
+  vector_map_tiles:
+    dependency: "direct main"
+    description:
+      name: vector_map_tiles
+      sha256: e35f090c428f05e44dd525fa4fedaafd1dbcd28b656cb0ea908528c6ce84a87d
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.0-beta.8"
+  vector_map_tiles_pmtiles:
+    dependency: "direct main"
+    description:
+      path: vector_map_tiles_pmtiles
+      ref: HEAD
+      resolved-ref: a18c042251784accd7b1286d02199f2f7705bfae
+      url: "https://github.com/josxha/flutter_map_plugins.git"
+    source: git
+    version: "1.5.1"
   vector_math:
     dependency: transitive
     description:
@@ -733,6 +798,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  vector_tile:
+    dependency: transitive
+    description:
+      name: vector_tile
+      sha256: "7ae290246e3a8734422672dbe791d3f7b8ab631734489fc6d405f1cc2080e38c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
+  vector_tile_dem:
+    dependency: transitive
+    description:
+      name: vector_tile_dem
+      sha256: "81a3568d2213817bd2698f919357e5107c0261491ae1014e821ed4fc3c2bf740"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
+  vector_tile_renderer:
+    dependency: "direct main"
+    description:
+      name: vector_tile_renderer
+      sha256: "99530edb073c1cea3c6a4bdb5ca9a5c6779c25ddf1a645678458504708dc221c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.0"
   vm_service:
     dependency: transitive
     description:
