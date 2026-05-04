@@ -16,6 +16,8 @@ class AppConfig {
     'Wimmera CMA Boundary',
     'Parcels',
     'Historic River Gauges',
+    'Wetlands',
+    'Rivers and Streams',
   };
   static const defaultLayerSubstring100yr = '1% (1 in 100';
 }
