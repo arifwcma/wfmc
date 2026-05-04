@@ -625,7 +625,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() => _userLocation = location);
       _mapController.move(location, 14);
-      _autoSelectClosestStudy(location);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -634,48 +633,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       if (mounted) setState(() => _locating = false);
     }
-  }
-
-  void _autoSelectClosestStudy(LatLng userLocation) {
-    if (_studies.isEmpty) return;
-
-    WmsLayer? closestStudy;
-    double closestDist = double.infinity;
-
-    for (final study in _studies) {
-      if (study.name == null || study.bbox3857 == null) continue;
-      final center = study.bbox3857!.center;
-      final centerLatLng = EpsgUtils.epsg3857ToLatLng(center.$1, center.$2);
-      final dist = _distanceSq(userLocation, centerLatLng);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestStudy = study;
-      }
-    }
-
-    if (closestStudy == null) return;
-
-    final layers100yr = <String>{};
-    for (final layer in closestStudy.children) {
-      final layerName = layer.name;
-      if (layerName != null &&
-          layerName.contains(AppConfig.defaultLayerSubstring100yr)) {
-        layers100yr.add(layerName);
-      }
-    }
-
-    if (layers100yr.isEmpty) return;
-
-    setState(() {
-      _enabledStudies = {closestStudy!.name!};
-      _enabledLayers = layers100yr;
-    });
-  }
-
-  double _distanceSq(LatLng a, LatLng b) {
-    final dLat = a.latitude - b.latitude;
-    final dLng = a.longitude - b.longitude;
-    return dLat * dLat + dLng * dLng;
   }
 
   Future<void> _saveBookmark(LatLng location) async {
