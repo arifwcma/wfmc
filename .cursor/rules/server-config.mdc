@@ -139,9 +139,9 @@ All vhosts are defined in a single file: `/home/ssm-user/apps/reverse-proxy/ngin
 ## QGIS Server container internals
 
 - Image: official `qgis/qgis-server:ltr`
-- Entrypoint: `/usr/local/bin/start-xvfb-nginx.sh`
+- Entrypoint: `/usr/local/bin/start-xvfb-nginx.sh` — **overridden** since 2026-05-04 via bind-mount of `/home/ssm-user/apps/qgis-server/start-xvfb-nginx.sh:ro`. Custom version replaces `spawn-fcgi -n` with `spawn-fcgi -F 2` so two FCGI workers run in parallel (live PIDs e.g. 22 and 26 inside container). Original baked-in script preserved as image default.
   - Starts Xvfb (`:99`, screen 0, 1280x1024x16, +GLX +render)
-  - Starts `spawn-fcgi` to launch `qgis_mapserv.fcgi` listening on `127.0.0.1:9993` (single FCGI process by default)
+  - Starts `spawn-fcgi -F 2` to launch **two** `qgis_mapserv.fcgi` workers listening on `127.0.0.1:9993`, each ~600 MB RSS
   - Starts internal nginx (master + 2 workers) listening on container port 80
 - FCGI binary inside container: `/usr/lib/cgi-bin/qgis_mapserv.fcgi` (runs as `www-data`)
 - Internal nginx config (host: `/home/ssm-user/apps/qgis-server/nginx/nginx.conf`) routes:
@@ -164,8 +164,16 @@ QGIS_SERVER_LIZMAP_REVEAL_SETTINGS=true
 HOME=/var/lib/qgis
 ```
 
-- Only **one** `qgis_mapserv.fcgi` process runs by default — but it does parallel rendering with up to `QGIS_SERVER_MAX_THREADS` threads. Increasing throughput requires either bumping FCGI process count (extra `spawn-fcgi -F N` flag) or raising `QGIS_SERVER_MAX_THREADS`. Note: per-tile multi-layer requests serialize on a single FCGI worker.
+- **Two** `qgis_mapserv.fcgi` processes run since 2026-05-04 (was one before). Heavy vector base layers (Wetlands, Rivers and Streams, ~1s cold render per tile) used to block the single FCGI worker and starve flood-depth tiles. With two workers, slow base renders run on one worker while fast flood renders run on the other. Verified: while a 1.1s Wetlands render was in flight, a parallel flood-tile request completed in 27 ms. Memory cost ≈ +600 MB; box still has ~2.4 GiB free.
+- `QGIS_SERVER_MAX_THREADS` only matters for *intra-request* parallel rendering (one GetMap with multiple layers). The Flutter app now sends one layer per GetMap, so threads sit idle within a request and inter-request parallelism comes from the worker count instead.
+- Bumping beyond 2 FCGI workers is not viable on this 2-CPU / 3.7 GiB box: 4 workers ≈ 2.4 GiB RSS would push it into OOM.
 - The qgis-server container also exposes port 9993 (the FCGI socket) but that's an internal artefact of the image; only port 80 is consumed by the reverse-proxy.
+
+### Backups (qgis-server compose dir)
+
+- `/home/ssm-user/apps/qgis-server/compose.yaml.bak.20260504-001202` — pre-FCGI-mount compose.yaml.
+- `/home/ssm-user/apps/qgis-server/start-xvfb-nginx.sh.bak.20260504-001202` — pristine baked-in script extracted from container.
+- Active override: `/home/ssm-user/apps/qgis-server/start-xvfb-nginx.sh` (mounted into the container at `/usr/local/bin/start-xvfb-nginx.sh:ro`).
 
 ## Reverse-proxy nginx — rate limiting
 
