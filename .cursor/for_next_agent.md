@@ -28,7 +28,7 @@ You are picking up the **Wimmera Flood Maps** Flutter project mid-flight. Read t
 ## 2. Server access (works, tested)
 
 ```powershell
-ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@16.176.28.146
+ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@13.55.191.184
 ```
 
 `ubuntu` for SSH; everything app-related lives under `/home/ssm-user/apps/` (owned by `ssm-user`, requires `sudo` from the `ubuntu` shell). Docker is invoked via `sudo docker ...` from `ubuntu`. Reverse-proxy and QGIS-server are containers; see `server-config.mdc` for the full layout.

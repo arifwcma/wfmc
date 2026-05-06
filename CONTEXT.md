@@ -11,14 +11,14 @@ Companion to `PROJECT.md`. PROJECT.md = what wfmc is. This file = how it fits wi
 5. **`wimmera_parcels`** (QGIS project) — desktop project used to prepare the Wimmera parcels source data that feeds `base_layers/data/wparcel/`.
 6. **`playground_details`** — unrelated to wfmc. Out of scope here.
 
-## 2. Server stack (single EC2 box, `16.176.28.146`)
+## 2. Server stack (single EC2 box, `13.55.191.184`)
 
 1. `qgis-server` container — runs the WMS for `pozi_base.qgs`. 2 FCGI workers (custom `start-xvfb-nginx.sh` bind-mounted, see `agent.md`).
 2. `baselayers` container — nginx serving `tiles/*.pmtiles` with CORS + Range. Reverse-proxied at `https://baselayers.wcma.work`.
 3. `xyz` container — already deployed Next.js XYZ tile server. Currently unused by wfmc. Reserved for future raster-XYZ pre-rendering.
 4. `nginx-reverse-proxy` — terminates TLS for `pozi.wcma.work`, `baselayers.wcma.work`, `xyz.wcma.work`.
 
-SSH: `ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@16.176.28.146`. App data lives under `/home/ssm-user/apps/`, needs `sudo` from `ubuntu`.
+SSH: `ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@13.55.191.184`. App data lives under `/home/ssm-user/apps/`, needs `sudo` from `ubuntu`.
 
 ## 3. Base-layer migration — current status
 
