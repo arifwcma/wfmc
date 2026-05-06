@@ -90,7 +90,7 @@ Files you will care about:
 ## 6. Server quick reference
 
 ```powershell
-ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@16.176.28.146
+ssh -i C:\Users\m.rahman\assets\keys\Playground1.pem ubuntu@13.55.191.184
 ```
 
 - App data lives under `/home/ssm-user/apps/` — needs `sudo` from `ubuntu`.
